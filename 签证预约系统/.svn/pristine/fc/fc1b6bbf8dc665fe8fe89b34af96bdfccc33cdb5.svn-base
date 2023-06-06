@@ -1,0 +1,76 @@
+import time
+
+from apscheduler.schedulers.blocking import BlockingScheduler
+from apscheduler.triggers.cron import CronTrigger
+
+import maker
+import util.global_var
+from util import global_var
+from workstation import db
+
+
+class DateMakerWorkstation(object):
+    def __init__(self, second):
+        self.find_account()
+        self.get_account_information()
+        self.second = second
+        self.ivr = None
+        self.account_information = None
+        self.use_time = None
+        self.count = None #记录work次数
+        scheduler = BlockingScheduler()
+        clock = CronTrigger(second=self.second)
+        scheduler.add_job(self.work, clock)
+        scheduler.start()
+    def find_account(self):#寻找新的生产员
+        global_var.date_maker_lock.acquire()
+        sql='select * FROM date_maker left join acct on date_maker.ivr = acct.ivr where acct.chk_status = 0 order BY last_use limit 1'
+        self.ivr = db.select(sql)[0][0]
+        print(self.ivr)
+        sql=f'UPDATE usavisa.date_maker SET last_use=now() WHERE ivr=\'{self.ivr}\''
+        db.update(sql)
+        self.use_time=time.time()#找到账号的时候记录一下时间 用于判断是否到期
+        global_var.date_maker_lock.release()
+        self.count = 1
+    def get_account_information(self):#根据ivr获取账号详细信息
+        print(f'ivr={self.ivr}')
+        sql = f'select country,username,password,ivr from `acct` where ivr = {self.ivr}'
+        print(sql)
+        self.account_information=db.select(sql)[0]   #拿到密码
+        print(self.account_information)
+        #3120
+        #todo 城市代码 日期 几点几分
+        '''date_maker = UnpaidAcct("ca", "alexar0roen@hotmail.com", "ggxvisa!", "89307271")'''
+    def start_get_date(self):
+        #todo data_maker应该改成self
+        #todo 增加logout
+        self.date_maker = maker.DateMaker(self.account_information[0],self.account_information[1],self.account_information[2],self.account_information[3], )
+        self.work += 1
+        with self.date_maker:
+            self.dates = self.date_maker.get_dates(auto_login=False)
+            print(self.dates)
+            #[['Calgary', (2023, 9, 28)],['Halifax', (0, 0, 0)], ['Montreal', (0, 0, 0)], ['Quebec City', (0, 0, 0)]]
+            #数据结构：[[str,(年,月,日)],[....],[....]] 二维度列表
+    def judge_date(self):
+        order=[x for x in order[国家][日期]]
+        if not len(order)== 0:
+            print("推送到时间工位管理员")
+    def work(self):
+            #判断是否到期 or 无账号
+            if self.ivr == None or time.time()-self.use_time >= global_var.DATE_MAKER_WORKING_HOURS:
+                self.find_account()
+                self.get_account_information()
+                #todo dict[城市][日期]
+                #todo 换号的过程中，不明异常间隔五分钟
+                #work计数
+            if self.count % util.global_var.UNPAIDACCT_ACTIVATE_INTERVAL == 0:
+                print('激活账号')
+            try:
+                print('运行self.start_get_date()')
+            except Exception as e:
+                print(e)
+                self.ivr = None
+                return
+                #todo 这里要不要加入一个数据查询
+            self.judge_date()
+                时分管理员.分配任务

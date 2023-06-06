@@ -1,0 +1,164 @@
+import json
+import time
+
+import requests
+from bs4 import BeautifulSoup
+from util import global_var as g
+from util.exception import *
+
+def get_dates(country_code, schedule_id, session, user_agent):
+    # [['Quebec City', (0, 0, 0)], ['Calgary', (2023, 10, 25)], ['Ottawa', (2023, 8, 31)], ['Toronto', (2024, 1, 25)], ['Vancouver', (2023, 7, 10)], ['Halifax', (0, 0, 0)], ['Montreal', (0, 0, 0)]]
+
+    req_url = "https://ais.usvisa-info.com/en-%s/niv/schedule/%s/payment" % (country_code, schedule_id)
+    req = requests.Session()
+    headers = {
+        "User-Agent": user_agent,
+        "Referer": req_url,
+        "Cookie": "_yatri_session=" + session
+    }
+    r = req.get(req_url, headers=headers, proxies=g.PROXIES)
+    if r.status_code != 200:
+        if r.status_code == 429:
+            raise WarningException("TOO-MANY", "取得日期过于频繁，只需要等几分钟就会自动恢复")
+        else:
+            msg = "取得日期时候出现网络操作错误。 返回status_code=%d, 返回信息%s" % (r.status_code, r.text[0:100])
+            raise ErrorException("GET-DATES-ERR", msg)
+
+
+    soup = BeautifulSoup(r.text, "html.parser")
+
+    time_table = soup.find("table", {"class": "for-layout"})
+
+    result = []
+    if time_table:
+        for tr in time_table.find_all("tr"):
+            tds = tr.find_all("td")
+            if not len(tds) == 2:
+                continue
+            place = tds[0].text
+            date_str = tds[1].text
+            s = date_str.split()
+            year, month, day = 0, 0, 0
+            if len(s) >= 3 and s[0] != "No":
+                day_str, month_str, year_str = s[-3], s[-2].replace(",", ""), s[-1]
+                year, month, day = int(year_str), g.MONTH[month_str], int(day_str)
+            result.append([place, (year, month, day)])
+
+    session = r.cookies["_yatri_session"]
+
+    return result, session
+
+
+def get_times(country_code, city_cd, schedule_id, appt_date, session, user_agent):
+    req = requests.Session()
+    req_url = "https://ais.usvisa-info.com/en-%s/niv/schedule/%s/appointment/times/%s.json?date=%sappointments[expedite]=false" % (country_code, schedule_id, city_cd, appt_date)
+    headers = {
+        "User-Agent": user_agent,
+        "Referer": req_url,
+        "Cookie": "_yatri_session=" + session
+    }
+    r = req.get(req_url, headers=headers, proxies=g.PROXIES)
+    if r.status_code != 200:
+        if r.status_code == 429:
+            raise WarningException("TOO-MANY", "取得时分数据过于频繁，只需要等几分钟就会自动恢复")
+        else:
+            raise ErrorException("GET-TIME-ERR",
+                                 "取得时分出现网络操作错误。 返回status_code=%d, 返回信息%s" % (r.status_code, r.text[0:100]))
+
+    session = r.cookies["_yatri_session"]
+    json_str = r.text
+
+    # 去除json里面的time信息
+    # 取得的信息可能是：
+    # json_str = '{"available_times":[null],"business_times":[]}'
+    # json_str = '{"available_times":["10:00"],"business_times":["10:00"]}'
+    # json_str = '{"available_times":["10:30","10:45","11:00","11:15","11:30"],"business_times":["10:30","10:45","11:00","11:15","11:30"]}'
+    json_times = json.loads(json_str)
+    available_times = json_times.get("available_times")
+
+    return available_times, session
+
+
+def schedule(country_code, city_cd, schedule_id, appt_date, appt_time, session, post_header, post_data):
+    req = requests.Session()
+    post_url = "https://ais.usvisa-info.com/en-%s/niv/schedule/%s/appointment" % (country_code, schedule_id)
+
+    post_header["Cookie"] = "_yatri_session=" + session
+    post_data["appointments[consulate_appointment][facility_id]"] = city_cd
+    post_data["appointments[consulate_appointment][date]"] = appt_date
+    post_data["appointments[consulate_appointment][time]"] = appt_time
+
+    r = req.post(post_url, headers=post_header, data=post_data, proxies=g.PROXIES)
+    if r.status_code != 200:
+        if r.status_code == 429:
+            raise WarningException("TOO-MANY", "预约POST过于频繁，只需要等几分钟就会自动恢复")
+        else:
+            raise ErrorException("POST-ERR",
+                                 "预约POST时候出现网络操作错误。 返回status_code=%d, 返回信息%s" % (r.status_code, r.text[0:100]))
+
+    session = r.cookies["_yatri_session"]
+
+    # 有这些keyword，代表预约成功
+    #   successfully scheduled
+    #   Successfully Scheduled
+    if (r.text.find('successfully scheduled') != -1 or r.text.find('Successfully Scheduled') != -1):
+        return g.SCHEDULE_SUCCESS, session
+    elif r.text.find('could not be scheduled') != -1:
+        return g.SCHEDULE_TOO_SLOW, session
+    else:
+        msg = "向ais系统post一个预约的时候正常返回，但是并不是成功，需要尽快确认是什么问题，并做对策。POST返回的信息是：%s" % (r.status_code, r.text[0:100])
+        raise ErrorException("POST-NO-ERR-BUT-UNKNOWN", msg)
+
+
+def get_post_data(country_code, schedule_id, session, user_agent):
+
+    # 跳转到预约页面
+    req_url = "https://ais.usvisa-info.com/en-%s/niv/schedule/%s/appointment" % (country_code, schedule_id)
+    req = requests.Session()
+    headers = {
+        "User-Agent": user_agent,
+        "Referer": req_url,
+        "Cookie": "_yatri_session=" + session
+    }
+    MAX_RETRY = 3  # 如果错误的话，最多尝试3次
+    for i in range(MAX_RETRY):
+        r = req.get(req_url, headers=headers, proxies=g.PROXIES)
+        # 正常跳转的话，不再继续尝试
+        if r.status_code == 200:
+            break
+
+        # 连续多次失败的话，只能退出
+        if i == MAX_RETRY - 1:
+            raise ErrorException("GET-POST-DATA-ERR",
+                                 "尝试了多次，还是无法移动到预约页面获取Post基础数据。这是一个严重错误，该账户只能退出，需要人工接入检查原因。 返回status_code=%d, 返回信息%s" % (r.status_code, r.text[0:100]))
+        # 休息10秒再尝试
+        time.sleep(10)
+
+    # 取得预约页面的post基础信息
+    session = r.cookies["_yatri_session"]
+    soup = BeautifulSoup(r.text, "html.parser")
+    post_data = {
+        "utf8": soup.find("input", {"name": "utf8"}).get('value'),
+        "authenticity_token": soup.find("input", {"name": "authenticity_token"}).get('value'),
+        "confirmed_limit_message": soup.find("input", {"name": "confirmed_limit_message"}).get('value'),
+        "use_consulate_appointment_capacity": soup.find("input", {"name": "use_consulate_appointment_capacity"}).get('value'),
+        "commit": "Schedule+Appointment"
+    }
+    return post_data, session
+
+def logout(country_code, session, user_agent):
+
+    req_url = "https://ais.usvisa-info.com/en-%s/niv/users/sign_out" % country_code
+    headers = {
+        "User-Agent": user_agent,
+        "Referer": req_url,
+        "Cookie": "_yatri_session=" + session
+    }
+    req = requests.Session()
+    r = req.get(req_url, headers=headers, proxies=g.PROXIES)
+    if r.status_code != 200:
+        raise WarningException("LOGOUT-REQUEST-ERR",
+                             "logout时候出错，不过可以忽视。 返回status_code=%d, 返回信息%s" % (r.status_code, r.text[0:100]))
+
+if __name__ == '__main__':
+    a = get_times("ca", "95", "schedule_id", "appt_date", "session", "user_agent")

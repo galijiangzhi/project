@@ -1,0 +1,54 @@
+"""
+全局变量和常量都在这儿定义
+"""
+
+
+"""
+线程安全的全局变量
+"""
+
+from threading import Lock
+
+lock = Lock()
+
+
+class GlobalVar:
+    var_set = {}
+
+
+def assign(var_name, var_value):
+    lock.acquire()
+    GlobalVar.var_set[var_name] = var_value
+    lock.release()
+
+
+def value(var_name, default_value):
+    lock.acquire()
+    if not var_name in GlobalVar.var_set:
+        GlobalVar.var_set[var_name] = default_value
+        lock.release()
+        return default_value
+    lock.release()
+    return GlobalVar.var_set[var_name]
+
+
+"""
+常量定义
+"""
+
+MONTH = {
+    "January": 1,
+    "February": 2,
+    "March": 3,
+    "April": 4,
+    "May": 5,
+    "June": 6,
+    "July": 7,
+    "August": 8,
+    "September": 9,
+    "October": 10,
+    "November": 11,
+    "December": 12
+}
+SCHEDULE_SUCCESS = 0
+SCHEDULE_TOO_SLOW = 1

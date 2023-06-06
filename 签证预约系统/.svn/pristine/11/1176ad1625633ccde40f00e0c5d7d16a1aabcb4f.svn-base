@@ -1,0 +1,125 @@
+import logging
+import time
+from datetime import datetime
+from apscheduler.schedulers.background import BackgroundScheduler
+
+from ais import *
+from util.exception import *
+from util.log import logger
+
+
+def start_multi_unpaid_acct():
+    # 创建多个未付费账户
+    acct_list = [
+        UnpaidAcct("ca", "acomasvu25@hotmail.com", "ggxvisa!", "90207107"),
+        UnpaidAcct("ca", "adellewlol38@hotmail.com", "ggxvisa!", "71508532"),
+        UnpaidAcct("ca", "aleshakarcz2nbv@hotmail.com", "ggxvisa!", "72520229"),
+        UnpaidAcct("ca", "alexar0roen@hotmail.com", "ggxvisa!", "89307271"),
+        UnpaidAcct("ca", "alfholesxp@hotmail.com", "Usavisa!", "23740532"),
+        UnpaidAcct("ca", "anderamx1qt@hotmail.com", "Usavisa!", "18666806"),
+        UnpaidAcct("ca", "anglawoxod@hotmail.com", "ggxvisa!", "46614194"),
+        UnpaidAcct("ca", "anima21wslowe@hotmail.com", "Usavisa!", "31068715"),
+        UnpaidAcct("ca", "antfk1duce@hotmail.com", "ggxvisa!", "11708124"),
+        UnpaidAcct("ca", "aricruse22@hotmail.com", "Usavisa!", "48997415"),
+        UnpaidAcct("ca", "austinva2k@hotmail.com", "Usavisa!", "71050605"),
+        UnpaidAcct("ca", "averytqs@hotmail.com", "Usavisa!", "81230885"),
+        UnpaidAcct("ca", "avilatbgm@hotmail.com", "ggxvisa!", "83628965"),
+        UnpaidAcct("ca", "beatagabmljz@hotmail.com", "Usavisa!", "69956092"),
+        UnpaidAcct("ca", "benjlsxxhaaby@hotmail.com", "ggxvisa!", "49144381"),
+        UnpaidAcct("ca", "bentleykix0m@hotmail.com", "Usavisa!", "25658456"),
+        UnpaidAcct("ca", "biffmarionpc39@hotmail.com", "Usavisa!", "76775155"),
+        UnpaidAcct("ca", "billyecaep@hotmail.com", "Usavisa!", "40685212"),
+        UnpaidAcct("ca", "bl62faraj@hotmail.com", "Usavisa!", "36862366"),
+        UnpaidAcct("ca", "brandaj7beckey@hotmail.com", "ggxvisa!", "12198303"),
+        UnpaidAcct("ca", "brianafpn@hotmail.com", "Usavisa!", "95699573"),
+        UnpaidAcct("ca", "brooksx7tredo@hotmail.com", "Usavisa!", "82013546"),
+        UnpaidAcct("ca", "bryony4sde@hotmail.com", "Usavisa!", "62260697"),
+        UnpaidAcct("ca", "c46enciso@hotmail.com", "Usavisa!", "83693325"),
+        UnpaidAcct("ca", "caelie86ra@hotmail.com", "Usavisa!", "41832542"),
+        UnpaidAcct("ca", "calleighsvme@hotmail.com", "ggxvisa!", "53024318"),
+        UnpaidAcct("ca", "candisgvbrm@hotmail.com", "Usavisa!", "21758169"),
+        UnpaidAcct("ca", "catgarney62m@hotmail.com", "ggxvisa!", "71253909"),
+        UnpaidAcct("ca", "cathypex@hotmail.com", "Usavisa!", "94948607"),
+        UnpaidAcct("ca", "ceislerzmqh@hotmail.com", "Usavisa!", "19471124"),
+        UnpaidAcct("ca", "celinad8wr@hotmail.com", "Usavisa!", "29884507"),
+        UnpaidAcct("ca", "chaddehaasq8e6@hotmail.com", "Usavisa!", "67971256"),
+        UnpaidAcct("ca", "chagrederlqm3@hotmail.com", "Usavisa!", "91412965"),
+        UnpaidAcct("ca", "charleydinmox0@hotmail.com", "Usavisa!", "18728662"),
+        UnpaidAcct("ca", "chelsieu5gda@hotmail.com", "ggxvisa!", "82489664"),
+        UnpaidAcct("ca", "cherinzasz@hotmail.com", "ggxvisa!", "93307471"),
+        UnpaidAcct("ca", "cherylrowe8w7@hotmail.com", "Usavisa!", "21951668"),
+        UnpaidAcct("ca", "cherystyler6zuh@hotmail.com", "ggxvisa!", "99107601"),
+        UnpaidAcct("ca", "chhayse43@hotmail.com", "ggxvisa!", "43744001"),
+        UnpaidAcct("ca", "chtozkoenig@hotmail.com", "ggxvisa!", "25417691"),
+        UnpaidAcct("ca", "ciras4gdir@hotmail.com", "ggxvisa!", "87299047"),
+        UnpaidAcct("ca", "claudettebar9lag@hotmail.com", "Usavisa!", "41672257"),
+        UnpaidAcct("ca", "clematismisdd@hotmail.com", "Usavisa!", "82185157"),
+        UnpaidAcct("ca", "clemfarugtt2s@hotmail.com", "ggxvisa!", "69767211"),
+        UnpaidAcct("ca", "clorakf4mi@hotmail.com", "Usavisa!", "51350145"),
+        UnpaidAcct("ca", "col6zlafler@hotmail.com", "Usavisa!", "32107450"),
+        UnpaidAcct("ca", "connellt1l@hotmail.com", "Usavisa!", "95989685"),
+        UnpaidAcct("ca", "cordelian2mi@hotmail.com", "Usavisa!", "96291699"),
+        UnpaidAcct("ca", "cordiekvatmirsch@hotmail.com", "Usavisa!", "48497712"),
+        UnpaidAcct("ca", "cristykatschmgvd@hotmail.com", "Usavisa!", "21200294"),
+        UnpaidAcct("ca", "cwilsonwkh@hotmail.com", "ggxvisa!", "38998562"),
+        UnpaidAcct("ca", "cxkbyrne@hotmail.com", "Usavisa!", "27103219"),
+        UnpaidAcct("ca", "dalilakedwb@hotmail.com", "Usavisa!", "16293156"),
+        UnpaidAcct("ca", "danmynearjqwt@hotmail.com", "Usavisa!", "10109920"),
+        UnpaidAcct("ca", "dawsonmurin6fk@hotmail.com", "Usavisa!", "47067896"),
+        UnpaidAcct("ca", "delight1bhpie@hotmail.com", "Usavisa!", "46849970"),
+        UnpaidAcct("ca", "delphineha0x@hotmail.com", "Usavisa!", "11082771"),
+        UnpaidAcct("ca", "dene9fbl@hotmail.com", "Usavisa!", "60208472"),
+        UnpaidAcct("ca", "denesewi7f2@hotmail.com", "ggxvisa!", "35883406"),
+        UnpaidAcct("ca", "derekcfhi@hotmail.com", "Usavisa!", "25446731")
+    ]
+
+    # 为所有账户login并创建线程
+    sche = BackgroundScheduler(job_defaults={'max_instances': 100, 'misfire_grace_time': 5 * 60})
+    sec = 0
+    for acct in acct_list:
+        # 以5分钟为节点，从0秒开始，每隔1秒，启动一个线程取日期(取日期同时会自动login)
+        sche.add_job(acct.get_dates,  'interval', seconds=1*60,
+                          start_date='2022-01-01 00:00:%02d' % sec,
+                          end_date='2023-10-25 23:10:00', args=[True,])
+        sec = sec + 1
+
+    # 启动线程
+    sche.start()
+
+    time.sleep(1*60*60)
+
+
+def start_unpaid_acct():
+    """ 未付费账户功能测试
+    """
+    acct = UnpaidAcct("ca", "alexar0roen@hotmail.com", "ggxvisa!", "89307271")
+    acct.login()  # 大概花费12秒
+    dates = acct.get_dates(auto_login=False)  # 大概花费1秒
+
+
+def start_prepaid_acct():
+    """ 付费账户功能测试
+    """
+    acct = PrepaidAcct("ca", "2273383946@qq.com", "liusihan12345", "92740922", "B1", 0, 0, 1)
+
+    acct.login()  # 约14秒
+    times = acct.get_times("94", "2024-02-01")  # 约0.4秒
+    acct.schedule("94", "2022-11-26", "15:15")
+    acct.schedule("94", "2022-11-26", "15:15")
+    acct.schedule("94", "2022-11-26", "15:15")
+
+if __name__ == '__main__':
+    try:
+        # 未付费账户测试
+        start_unpaid_acct()
+
+        # 未付费账户测试(多线程)
+        # start_multi_unpaid_acct()
+
+        # 付费账户测试
+        # start_prepaid_acct()
+
+    except WarningException as e:
+        logger.warning(e)
+    except ErrorException as e:
+        logger.error(e)

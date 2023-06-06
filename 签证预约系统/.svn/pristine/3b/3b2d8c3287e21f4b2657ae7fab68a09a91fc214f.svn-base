@@ -1,0 +1,9 @@
+class AisBizException(Exception):
+    """Ais系统检查出来的错误
+    """
+    def __init__(self, code, msg):
+        self.code = code
+        self.msg = msg
+
+    def __str__(self):
+        print("%s:%s" % (self.code, self.msg))

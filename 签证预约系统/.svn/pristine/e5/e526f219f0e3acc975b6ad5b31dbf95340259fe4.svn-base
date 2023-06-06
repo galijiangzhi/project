@@ -1,0 +1,103 @@
+'''
+日期生产员工作站
+'''
+from applOrder import *
+
+
+class ApplicantOrderDic(object):
+    # 所有订单的期间需求都保存在订单字典中
+    #   结构 [{city_cd: [{date:[appl_list]}] }]
+    order_dic = None
+    # order_dic = {
+    #     "95": {
+    #         "2022-10-10": [user1, user2],
+    #         "2022-10-11": [user3, user2],
+    #         "2022-10-15": [user1, user5]
+    #     },
+    #     "98": {
+    #         "2022-11-10": [user1, user2],
+    #         "2022-10-18": [user3, user2],
+    #         "2022-10-19": [user1, user5]
+    #     },
+    # }
+
+    def __init__(self):
+        pass
+
+    def __del_finished_appl__(self):
+        for city, date_dic in self.order_dic.items():
+            for date, appl_list in date_dic.items():
+                for i in range(len(appl_list) - 1, -1, -1):
+                    if appl_list[i].final_sts == 1:
+                        appl_list.remove(appl_list[i])
+
+    def __ins_one_appl__(self, appl: ApplOrder):
+        pass
+
+
+    def reset(self, appl_list: list):
+        appl: ApplOrder
+        for appl in appl_list:
+            # 申请人已经约好了位置，则不管他
+            if appl.final_sts == 1:
+                continue
+
+            # 把这个申请人 可接受的城市以及相应的可接受日期 加入字典
+            order_period: ApplOrderPeriod
+            for order_period in appl.order_period_list:
+                self.appand(order_period.city_cd, order_period.get_acpt_dates())
+
+
+        # 根据提前几天告知，去除相关日期下的user
+        # todo：
+
+        # 所有申请人根据可接受面试的总天数排序
+        self.__sort__()
+
+    def __del_one_appl__(self, appl: ApplOrder):
+        pass
+
+    def __sort__(self, appl: ApplOrder):
+        pass
+
+    def __add_applicant__(self, appl: ApplOrder):
+        pass
+
+    def get_appl_list(self, city_cd: str, appt_date: str):
+        pass
+
+
+appl_order_dic = ApplicantOrderDic()
+
+if __name__ == '__main__':
+    appl_list: list = [ApplOrder(), ApplOrder(), ApplOrder(), ApplOrder(), ApplOrder()]
+    appl_list[0].final_sts = 0
+    appl_list[1].final_sts = 1
+    appl_list[2].final_sts = -1
+    appl_list[3].final_sts = 0
+    appl_list[4].final_sts = 1
+    appl_order_dic.order_dic = {
+        "95": {
+            "2022-10-10": [appl_list[0], appl_list[1]],
+            "2022-10-11": [appl_list[2], appl_list[3]],
+            "2022-10-15": [appl_list[4], appl_list[0]],
+        },
+        "98": {
+            "2022-11-10": [appl_list[0], appl_list[1]],
+            "2022-10-18": [appl_list[2], appl_list[3]],
+            "2022-10-19": [appl_list[4], appl_list[3]],
+        },
+    }
+
+    # 申请人工位的管理员00:02:00开始，每5分钟必须调用一次
+    # 调用前，需要在数据库检索一下，准备以下数据。但是，即使没有检索到，也必须reset字典（因为每个user都有提前几天告知的选项）
+    #   所有还未load到系统进行预约的申请人订单 -》 需要加入到数据字典
+    #   需要暂停的申请人订单 -> 如果已经load进来的话，需要删除数据字典里面的这个申请人的信息
+    #   申请人的订单有更新（比如预约期间改了） -> 如果已经load进系统的话，需要先把这个人从数据字典删除，再重新加入一遍
+    # 其他任何时候都不要reset订单字典，避免多线程数据冲突
+    new_appl_list, pause_appl_list, upd_appl_list = [], [], []
+    appl_order_dic.reset(new_appl_list, pause_appl_list, upd_appl_list)
+
+    # 日期生产员找到某个日期后，需要在数据字典里面查找是否有人需要这个位置
+    appl_order_dic.get_appl_list(city_cd = "95", appt_date = "2022-10-20")
+

@@ -1,0 +1,25 @@
+from apscheduler.schedulers.background import BackgroundScheduler
+
+from util.exception import CriticalException, ErrorException, WarningException
+from util.log import logger
+from util.config import config
+
+import MySQLdb
+from dbutils.pooled_db import PooledDB
+from util import db as mysql
+db = mysql._MySQLPool()
+sys_parm = mysql._SysParmTbl()
+tcn_def = mysql._TcnDefineTbl()
+city_tbl = mysql._CityTbl()
+dblog = mysql._DB_Log()
+
+class nb():
+    def __init__(self):
+        self.sql="select * from acct limit 1"
+    def nb(self):
+        result_list = db.select("select * from acct limit 1")
+        print(result_list)
+
+# if __name__ == '__main__':
+#     nb = nb()
+#     nb.nb()

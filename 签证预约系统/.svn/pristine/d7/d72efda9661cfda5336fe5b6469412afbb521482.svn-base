@@ -1,0 +1,195 @@
+'''
+日期生产员工作站
+'''
+import ais
+import util.global_var
+from util import utils
+from util import global_var as g
+import logging
+import time
+from datetime import datetime
+from apscheduler.schedulers.background import BackgroundScheduler
+from apscheduler.schedulers.background import BackgroundScheduler
+
+from util.exception import CriticalException, ErrorException, WarningException
+from util.log import logger
+from util.config import config
+
+import MySQLdb
+from dbutils.pooled_db import PooledDB
+from util import db as mysql
+from util import global_var
+
+from ais import *
+from util.exception import *
+from util.log import logger
+from util import db
+from util import db as mysql
+from util import global_var
+import maker
+import threading
+import time
+from apscheduler.schedulers.background import BlockingScheduler
+from apscheduler.schedulers.background import BackgroundScheduler
+from apscheduler.triggers.interval import IntervalTrigger
+from apscheduler.triggers.cron import CronTrigger
+import random
+
+db = mysql._MySQLPool()
+
+def open_date_maker(second):
+    datemaker = DateMakerWorkstation(second)
+
+class DateMakerWorkstation(object):
+    def __init__(self, second):
+        self.find_account()
+        self.get_account_information()
+        self.second = second
+        self.ivr = None
+        self.account_information = None
+        self.use_time = None
+        self.count = None #记录work次数
+        scheduler = BlockingScheduler()
+        clock = CronTrigger(second=self.second)
+        scheduler.add_job(self.work, clock)
+        scheduler.start()
+    def find_account(self):#寻找新的生产员
+        global_var.date_maker_lock.acquire()
+        sql='select * FROM date_maker left join acct on date_maker.ivr = acct.ivr where acct.chk_status = 0 order BY last_use limit 1'
+        self.ivr = db.select(sql)[0][0]
+        print(self.ivr)
+        sql=f'UPDATE usavisa.date_maker SET last_use=now() WHERE ivr=\'{self.ivr}\''
+        db.update(sql)
+        self.use_time=time.time()#找到账号的时候记录一下时间 用于判断是否到期
+        global_var.date_maker_lock.release()
+        self.count = 1
+    def get_account_information(self):#根据ivr获取账号详细信息
+        print(f'ivr={self.ivr}')
+        sql = f'select country,username,password,ivr from `acct` where ivr = {self.ivr}'
+        print(sql)
+        self.account_information=db.select(sql)[0]   #拿到密码
+        print(self.account_information)
+        #3120
+        #todo 城市代码 日期 几点几分
+        '''date_maker = UnpaidAcct("ca", "alexar0roen@hotmail.com", "ggxvisa!", "89307271")'''
+    def start_get_date(self):
+        #todo data_maker应该改成self
+        #todo 增加logout
+        self.date_maker = maker.DateMaker(self.account_information[0],self.account_information[1],self.account_information[2],self.account_information[3], )
+        self.work += 1
+        with self.date_maker:
+            self.dates = self.date_maker.get_dates(auto_login=False)
+            print(self.dates)
+            #[['Calgary', (2023, 9, 28)],['Halifax', (0, 0, 0)], ['Montreal', (0, 0, 0)], ['Quebec City', (0, 0, 0)]]
+            #数据结构：[[str,(年,月,日)],[....],[....]] 二维度列表
+    def judge_date(self):
+        order=[x for x in order[国家][日期]]
+        if not len(order)== 0:
+            print("推送到时间工位管理员")
+    def work(self):
+            #判断是否到期 or 无账号
+            if self.ivr == None or time.time()-self.use_time >= global_var.DATE_MAKER_WORKING_HOURS:
+                self.find_account()
+                self.get_account_information()
+                #todo dict[城市][日期]
+                #todo 换号的过程中，不明异常间隔五分钟
+                #work计数
+            if self.count % util.global_var.UNPAIDACCT_ACTIVATE_INTERVAL == 0:
+                print('激活账号')
+            try:
+                print('运行self.start_get_date()')
+            except Exception as e:
+                print(e)
+                self.ivr=None
+                return
+                #todo 这里要不要加入一个数据查询
+            self.judge_date()
+
+
+                    #self.find_account()
+                    #self.get_account_information()
+                    #
+                #如果抛出异常就是登陆失败
+                    #计入数据库
+                #判断日期是否满足某些订单
+
+                #判断账号是否正常
+    #     #登录工位中的账号：
+    #     #判断账号是否到期：
+    #     #判断账号登陆时间
+    #     #更换账号
+    #     #请求
+class TimeMakerWorkstation(object):
+    #todo 时间工位是计时激活 日期工位是记次激活 开辟一个线程用于时间工位激活
+    def __init__(self):
+        self.find_account()
+        self.get_account_information()
+        self.ivr = None
+        self.use_time = None
+        self.account_information=None
+        self.login()
+
+    def find_account(self):  # 寻找新的时间生产员
+        global_var.time_maker_lock.acquire()
+        sql = 'select * FROM time_maker left join acct on time_maker.ivr = acct.ivr where acct.chk_status = 0 order BY last_use limit 1'
+        self.ivr = db.select(sql)[0][0]
+        print(self.ivr)
+        sql = f'UPDATE usavisa.date_maker SET last_use=now() WHERE ivr=\'{self.ivr}\''
+        db.update(sql)
+        global_var.time_maker_lock.release()
+        self.use_time = time.time()  # 找到账号的时候记录一下时间 用于判断是否到期
+        self.timed_activation()
+    def get_account_information(self):
+        print(f'ivr={self.ivr}')
+        sql=f'select country,username,password,ivr from `acct` where ivr = {self.ivr}'
+        print(sql)
+        self.account_information=db.select(sql)[0]   #拿到密码
+        print(self.account_information)#成功取到国家，账号，密码，ivr
+    def login(self):
+        if self.ivr == None:
+            self.find_account()
+            self.get_account_information()
+        try:
+            self.time_maker=ais.PrepaidAcct(账号信息)
+        except Exception as e:
+            print(e)
+            self.ivr = None
+            self.login()
+        else:
+            self.timed_activation()
+    def timed_activation()
+        sched = BackgroundScheduler()
+        sched.add_job(self.账号实例.激活, 'interval', seconds=util.global_var.PREPAIDACCT_ACTIVATE_INTERVAL)
+        #todo 不知道add_job中的数据会不会自动更新
+        sched.start()
+    def start_get_time(self):
+        print('获取日期')
+        #time_maker = PrepaidAcct("ca", "2273383946@qq.com", "liusihan12345", "92740922", "B1", 0, 0, 1)
+    def user_order(self):
+        print('让订单用户下单')
+    def work(self):
+        print('self.start_get_time')
+        if 有可用时间
+            print('self.user_order')
+class TimeMakerWorkstationAdmin(object):
+    def __init__(self):
+        self.maker=[]
+    def create_timemakerworkstation(self):#创造时间生产员工位
+        timemaker=TimeMakerWorkstation()
+        self.maker.append(timemaker)
+    def assigning_job(self):
+        result=random.sample(range(0,len(self.maker)),util.global_var.NUMBER_OF_DATE_MAKER)
+        for i in result:
+            i.start_get_time()
+class UserWork
+# todo 用户账号需要保持在线 激活
+# class UserWorkstationAdmin(object):
+#     def work(self):
+#         # yes 查看数据库中未进入工位的订单 起始日期 结束日期 不要哪些日期 距离今天往后多少天
+#         # yes 开启工位
+#         # yes 放入订单
+#         #修改数据库内的订单状态
+#         # yes 整理订单的时间字典
+#           {2022—10—10：[['ca',ivr]]}
+
+

@@ -1,0 +1,104 @@
+"""
+全局变量和常量都在这儿定义
+"""
+import logging
+
+"""
+线程安全的全局变量
+"""
+
+from threading import Lock
+
+lock = Lock()
+date_maker_lock = Lock()
+time_maker_lock = Lock()
+
+
+class GlobalVar:
+    var_set = {}
+
+
+def assign(var_name, var_value):
+    lock.acquire()
+    GlobalVar.var_set[var_name] = var_value
+    lock.release()
+
+
+def value(var_name, default_value):
+    lock.acquire()
+    if not var_name in GlobalVar.var_set:
+        GlobalVar.var_set[var_name] = default_value
+        lock.release()
+        return default_value
+    lock.release()
+    return GlobalVar.var_set[var_name]
+
+
+"""
+普通变量
+"""
+
+"""
+常量定义
+"""
+MONTH = {
+    "January": "01",
+    "February": "02",
+    "March": "03",
+    "April": "04",
+    "May": "05",
+    "June": "06",
+    "July": "07",
+    "August": "08",
+    "September": "09",
+    "October": "10",
+    "November": "11",
+    "December": "12"
+}
+SCHEDULE_SUCCESS = 0
+SCHEDULE_TOO_SLOW = 1
+
+#默认开启的日期生产员数量
+DEFAULT_NUM_OF_DATE_MARK = 60
+
+#每个日期生产员的工作时间时间
+DATE_MAKER_WORKING_HOURS = 30
+#未付费账号29分钟(单位为工作次数）
+UNPAIDACCT_ACTIVATE_INTERVAL = 29
+
+#时间生产员管理员开启的管理员工位数量：
+NUMBER_OF_DATE_MAKER_WORKSTATION = 10
+#时间生产员管理员单次订单派出的时间生产元数量
+NUMBER_OF_DATE_MAKER =3
+#付费账号29分钟（单位为分钟） 推荐设置为25 防止与工作周期重合
+PREPAIDACCT_ACTIVATE_INTERVAL = 1
+
+
+DEBUG_USER = "wugf"
+
+if DEBUG_USER == "wugf":
+    # config文件
+    CONFIG_FILE_NAME = "D:\\usavisa\\source\\config.yaml"
+
+    # 日志
+    LOG_FILE_NAME = 'D:\\usavisa\\source\\usavisa.log'
+    LOG_LEVEL = logging.DEBUG
+
+    PROXIES = None
+
+    # debug状态下，部分语句会被删除掉，或者被放开
+    # 比如线程会被大量去除掉，避免debug混乱
+    DEBUG = True
+
+else:
+    # config文件
+    CONFIG_FILE_NAME = "d:\\A_work_code\\source\\config.yaml"
+
+    # 日志
+    # LOG_FILE_NAME = 'd:\\A_work_code\\source\\usavisa.log'
+    LOG_FILE_NAME = 'D:\\A_work_code\\source\\usavisa.log'
+    LOG_LEVEL = logging.DEBUG
+
+    PROXIES = {'http': 'http://localhost:15236', 'https': 'http://localhost:15236'}
+
+    DEBUG = True

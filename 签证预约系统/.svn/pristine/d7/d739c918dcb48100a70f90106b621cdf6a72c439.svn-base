@@ -1,0 +1,29 @@
+"""
+log输出有以下级别
+CRITICAL：系统shutdown类型的错误
+ERROR：业务角度一些错误信息
+WARNING：业务角度的一些警告信息
+INFO：即使运行几天，也不会输出大量的日志，可以理解为info log。 比如成功预约了某个面试、有一个新的账户增加进来了等。
+DEBUG：开始或者执行完成一个函数时候用一下。部分函数可以对更细节的代码输出debug日志
+"""
+import logging
+
+LOG_FILE_NAME = 'usavisa.log'
+LOG_LEVEL = logging.DEBUG
+
+# create logger
+logger = logging.getLogger(LOG_FILE_NAME)
+logger.setLevel(logging.DEBUG)
+
+# create console handler and set level to debug
+ch = logging.FileHandler(LOG_FILE_NAME, encoding="utf-8")
+ch.setLevel(LOG_LEVEL)
+
+# create formatter
+formatter = logging.Formatter('%(asctime)s => %(levelname)s : %(message)s')
+
+# add formatter to ch
+ch.setFormatter(formatter)
+
+# add ch to logger
+logger.addHandler(ch)

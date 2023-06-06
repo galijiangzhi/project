@@ -1,0 +1,145 @@
+import datetime
+import ais
+from util.db import *
+from threading import Thread
+
+
+class ApplOrderPeriod:#订单详细期间信息
+    def __init__(self, order_id, city_cd, date_from, date_to, excl_dates: str, adv_dates):
+        self.order_id = order_id
+        self.city_cd = city_cd
+        self.date_from = datetime.datetime.strptime(date_from, "%Y-%m-%d")
+        self.date_to = datetime.datetime.strptime(date_to, "%Y-%m-%d")
+        self.adv_dates = int(adv_dates)
+
+        # 排除日转换为[[2022-10-10, 2022-10-12], [2022-11-09, 2022-11-20]]
+        # 日期元素用datetime类型保存，而不是原来的str
+        self.excl_dates = []
+        if excl_dates is not None and excl_dates.strip() != "":
+            ed_dic = json.loads(excl_dates)
+            for date_pair in ed_dic["date_list"]:
+                ed_from = datetime.datetime.strptime(date_pair[0], "%Y-%m-%d")
+                ed_to = datetime.datetime.strptime(date_pair[1], "%Y-%m-%d")
+                self.excl_dates.append([ed_from, ed_to])
+
+        # todo:检查日期设置的是否合法
+
+    def get_acpt_dates(self):
+        sys_dt = datetime.datetime.now()
+        adv_dt = sys_dt + datetime.timedelta(days=self.adv_dates)
+        real_from = max(adv_dt, self.date_from)
+        real_to = self.date_to
+
+        def get_date_list(start_date: datetime, end_date: datetime):
+            """
+            获取指定时间段内的日期
+            :param start_date: 起始时间 --> str YYYYmmdd
+            :param end_date: 结束时间 --> str YYYYmmdd
+            :return: list. 格式 ["2022-10-10", "2022-10-11", "2022-10-22"]
+            """
+            date_list = []
+            cur_date = start_date
+            while cur_date <= end_date:
+                date_str = cur_date.strftime("%Y-%m-%d")
+                date_list.append(date_str)
+                cur_date = cur_date + datetime.timedelta(days=1)
+            return date_list
+
+        acpt_list = get_date_list(real_from, real_to)
+        for excl_dates in self.excl_dates:
+            excl_list = get_date_list(excl_dates[0], excl_dates[1])
+            acpt_list = list(set(acpt_list).difference(set(excl_list)))
+
+        return acpt_list
+
+
+class ApplOrder(ais.PrepaidAcct):#订单
+    # 预约状态
+    #  0， 等待预约，可以接受新的要求预约的请求
+    #  1, 预约成功
+    #  -1， 正在预约中，没法接受新的要求预约的请求
+    final_sts = 0
+
+    order_period_list = []
+
+    def __init__(self, order_id):
+        # 取出 订单order表的数据
+        rslt = db.select(f"select id, ivr, self_appt_sts, self_appt_city_cd, self_appt_date, comm, "
+                         f"pause, pause_reson, final_sts, final_city_cd, final_appt_date, final_appt_time, "
+                         f"create_timestamp, update_datetime from `order` where id = {order_id}")
+        if len(rslt) == 0:
+            raise ErrorException(f"DB的订单表没有找到指定id {order_id}的数据")
+        for row in rslt:
+            self.id, self.ivr = row[0], row[1]
+            self.self_appt_sts, self.self_appt_city_cd, self.self_appt_date = row[2], row[3], row[4]
+            self.comm = row[5]
+            self.pause, self.pause_reson = row[6], row[7]
+            self.final_sts, self.final_city_cd, self.final_appt_date, self.final_appt_time = row[8], row[9], row[10], \
+                                                                                             row[11]
+            self.create_timestamp, self.update_datetime = row[12], row[13]
+
+        # 取出 订单期间order_period表的数据
+        rslt = db.select(f"select order_id, city_cd, date_from, date_to, excl_dates, adv_dates, "
+                         f"create_timestamp, update_datetime from `order_period` where `order_id` = {self.id}")
+        if len(rslt) == 0:
+            raise ErrorException(f"DB的订单期间表没有找到指定order_id = {self.id}的数据")
+        self.order_period_list = []
+        for row in rslt:
+            self.order_period_list.append(
+                ApplOrderPeriod(row[0], row[1], row[2], row[3], row[4], row[5]))
+
+    def get_priority(self):
+        """
+        可以接受的期间越短，优先度越高
+        """
+        priority = 0
+        for period in self.order_period_list:
+            priority = priority + len(period.get_acpt_dates())
+        # todo: 成员变量只是测试用一下，今后需要删除
+        self.__priority__ = priority
+        return priority
+
+    def __str__(self):
+        return f"(id {self.id}, ivr {self.ivr})"
+
+    def __repr__(self):
+        return self.__str__()
+
+#     #登录工位中的账号：
+    #     #判断账号是否到期：
+    #     #判断账号登陆时间
+    #     #更换账号
+    #     #请求
+class OrderWorkstation(object):
+    def __init__(self):
+        pass
+# todo 用户账号需要保持在线 激活
+class OrderWorkstationAdmin(object):
+    def __init__(self):
+        print('开启订单工位管理员')
+        self.get_order()
+    def get_order(self):
+        rslt = db.select('select id from `order`')
+        for i in rslt:
+            t1 = Thread(target=self.open_orderworkstation, args=(i[0],))
+            print(i[0])
+
+    def open_orderworkstation(self,order_id):
+        orderworkstation=ApplOrder(order_id)
+
+
+    #todo 开线程定期更新订单字典
+#     def work(self):
+#         # yes 查看数据库中未进入工位的订单 起始日期 结束日期 不要哪些日期 距离今天往后多少天
+#         # yes 开启工位
+#         # yes 放入订单
+#         #修改数据库内的订单状态
+#         # yes 整理订单的时间字典
+#           {2022—10—10：[['ca',ivr]]}
+
+
+if __name__ == '__main__':
+    # 用id创建一个申请人（消费者）
+    # appl = ApplOrder("1")
+    # logger.debug(appl)
+    a = OrderWorkstationAdmin()

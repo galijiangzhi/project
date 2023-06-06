@@ -1,0 +1,79 @@
+import random
+import time
+
+from apscheduler.schedulers.background import BackgroundScheduler
+
+import ais
+import util.global_var
+from util import global_var
+from workstation import db
+
+
+class TimeMakerWorkstation(object):
+    #todo 时间工位是计时激活 日期工位是记次激活 开辟一个线程用于时间工位激活
+    def __init__(self):
+        self.find_account()
+        self.get_account_information()
+        self.ivr = None
+        self.use_time = None
+        self.account_information=None
+        self.time_maker
+        self.login()
+
+
+
+    def find_account(self):  # 寻找新的时间生产员
+        global_var.time_maker_lock.acquire()
+        sql = 'select * FROM time_maker left join acct on time_maker.ivr = acct.ivr where acct.chk_status = 0 order BY last_use limit 1'
+        self.ivr = db.select(sql)[0][0]
+        print(self.ivr)
+        sql = f'UPDATE usavisa.date_maker SET last_use=now() WHERE ivr=\'{self.ivr}\''
+        db.update(sql)
+        global_var.time_maker_lock.release()
+        self.use_time = time.time()  # 找到账号的时候记录一下时间 用于判断是否到期
+        self.timed_activation()
+    def get_account_information(self):
+        print(f'ivr={self.ivr}')
+        sql=f'select country,username,password,ivr from `acct` where ivr = {self.ivr}'
+        print(sql)
+        self.account_information=db.select(sql)[0]   #拿到密码
+        print(self.account_information)#成功取到国家，账号，密码，ivr
+    def login(self):
+        if self.ivr == None:
+            self.find_account()
+            self.get_account_information()
+        try:
+            self.time_maker=ais.PrepaidAcct(账号信息)
+        except Exception as e:
+            print(e)
+            self.ivr = None
+            self.login()
+        else:
+            self.timed_activation()
+    def timed_activation()
+        sched = BackgroundScheduler()
+        sched.add_job(self.账号实例.激活, 'interval', seconds=util.global_var.PREPAIDACCT_ACTIVATE_INTERVAL)
+        #todo 不知道add_job中的数据会不会自动更新
+        sched.start()
+    def start_get_time(self):
+        print('获取日期')
+        #time_maker = PrepaidAcct("ca", "2273383946@qq.com", "liusihan12345", "92740922", "B1", 0, 0, 1)
+    def user_order(self):
+        print('让订单用户下单')
+    def work(self):
+        print('self.start_get_time')
+        if 有可用时间
+            print('self.user_order')
+
+
+class TimeMakerWorkstationAdmin(object):
+    def __init__(self):
+        self.maker=[]
+    def create_timemakerworkstation(self):#创造时间生产员工位
+        timemaker=TimeMakerWorkstation()
+        self.maker.append(timemaker)
+    def assigning_job(self，国家 日期 ):
+        result=random.sample(range(0,len(self.maker)),util.global_var.NUMBER_OF_DATE_MAKER)
+        for i in result:
+            #todo 线程
+            i.start_get_time()=[(),(),()]

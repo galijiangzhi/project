@@ -1,0 +1,70 @@
+'''
+日期生产员工作站
+'''
+from util import utils
+from util import global_var as g
+import logging
+import time
+from datetime import datetime
+from apscheduler.schedulers.background import BackgroundScheduler
+from apscheduler.schedulers.background import BackgroundScheduler
+
+from util.exception import CriticalException, ErrorException, WarningException
+from util.log import logger
+from util.config import config
+
+import MySQLdb
+from dbutils.pooled_db import PooledDB
+from util import db as mysql
+
+from ais import *
+from util.exception import *
+from util.log import logger
+from util import db
+from util import db as mysql
+db = mysql._MySQLPool()
+class DateMakerWorkstation(object):
+     def __init__(self):
+         self.find_account()
+     def find_account(self):
+         sql='select * FROM date_maker order BY last_use limit 1'
+         self.ivr = db.select(sql)[0][0]
+         print(self.ivr)
+         sql=f'UPDATE usavisa.date_maker SET last_use=now() WHERE ivr=\'{self.ivr}\''
+         print(sql)
+         db.update(sql)
+         # self.__ins_upd_del__(sql)
+    # def get_account_information(self,ivr):
+    #     # print(f'ivr={ivr}')
+    #     sql=f'select ivr,username,password,country from `acct` where ivr = {ivr}'
+    #     print(sql)
+    #     self.account_information=self.mysql.get_data(sql)[0]   #拿到密码
+    #     print(self.account_information)
+    #     #3120
+    # def start_get_date(self):
+    #     date_maker = UnpaidAcct(self.account_information[3],self.account_information[1],self.account_information[2],self.account_information[0], )
+    #     with date_maker:
+    #         # 等待4小时（4小时后，日期生产员就被lock，失去取日期的能力了）
+    #         # for i in range(0, 4*60):
+    #         #     time.sleep(60)
+    #         #
+    #         #     # 每隔29分钟，激活一次。且第一次不做激活
+    #         #     if (i+1) % 29 == 0:
+    #         #         date_maker.activate()
+    #
+    #         # # 等待过程中收到其他人的取日期的请求
+    #         dates = date_maker.get_dates(auto_login=False)
+    #         print(dates)
+    # def work(self):
+    #     while
+    #     self.find_account()#获取一个能用的账号
+    #     # print(self.account)
+    #     # print(self.account[0][0])
+    #     self.get_account_information(self.account[0])
+    #     self.start_get_date()
+    #
+    #     #登录工位中的账号：
+    #     #判断账号是否到期：
+    #     #判断账号登陆时间
+    #     #更换账号
+    #     #请求

@@ -1,0 +1,311 @@
+"""所有的ais网站的操作都通过【已付费PrepaidAcct】和【未付费UnpaidAcct】实现
+"""
+__version__ = '0.0.1'
+__author__ = 'griffin wu'
+
+from abc import abstractmethod
+from threading import Lock
+
+from apscheduler.schedulers.background import BackgroundScheduler
+from apscheduler.triggers.cron import CronTrigger
+from selenium.webdriver.chrome.webdriver import WebDriver
+
+import ais.__ais_browser__ as ab
+import ais.__ais_http__ as ah
+import util.global_var as g
+from ais import __ais_browser__ as ab
+from util.exception import *
+from util.log import logger
+
+
+class _Acct(object):
+    """这是所有账户的基类，不可实例化
+    """
+    def __init__(self, country: str, user_name: str, password: str, ivr: str):
+        """初始化
+        """
+        self.country = country
+        self.user_name = user_name
+        self.password = password
+        self.ivr = ivr
+        self.__session__ = None
+        self.__schedule_id__ = None
+        self.__user_agent__ = None
+        self.__logined__ = False
+
+        # login logout锁
+        self.login_out_lock = Lock()
+
+    def __enter__(self):
+        """with语句上下文管理
+        """
+        self.__login__()
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        """with语句上下文管理
+        """
+        self.__logout__()
+
+    def is_logined(self):
+        """返回当前账户的login状态
+        :return: True代表已经login， False代表还未login
+        """
+        with self.login_out_lock:
+            latest_login_sts = self.__logined__
+        return latest_login_sts
+
+    def start(self):
+        """login并启动定期激活线程
+        :exception: AisBizException
+            LOGIN-WRONG-PWD-001: 密码错误，这个账户永久被停用
+            其他错误: 换一个账户继续登录
+        """
+        # 登录网站
+        self.__login__()
+
+        # 开始定期激活, 现在开始（因为login已经被间隔开了），间隔25分钟，启动一次
+        if not g.DEBUG:
+            self.activate_sche = BackgroundScheduler()
+            clock = CronTrigger(minute=25)
+            self.activate_sche.add_job(self.activate, clock)
+            self.activate_sche.start()
+
+    def stop(self):
+        """关闭激活线程后logout
+        """
+        # 定期激活线程关闭
+        if not g.DEBUG:
+            self.activate_sche.shutdown()
+
+        # 登出网站
+        self.__logout__()
+
+    def __login__(self):
+        """login并检查账户
+        :exception: AisBizException
+            LOGIN-WRONG-PWD-001: 密码错误，这个账户永久被停用
+            其他错误: 换一个账户继续登录
+        """
+        try:
+            logger.debug("IVR %s 开始login" % self.ivr)
+            driver = ab.create()
+
+            with self.login_out_lock:
+                # __login__（如果错误的话，多登陆几次）
+                LOGIN_RETRY_CNT = 3
+                for i in range(0, LOGIN_RETRY_CNT):
+                    # 打开Login页面
+                    if not ab.open_login_page(driver, self.country):  # 如果没有打开
+                        if i == LOGIN_RETRY_CNT - 1:  # 如果尝试了多次的话，抛出最后一次的错误内容
+                            if ab.is_ais_maintenance(driver):
+                                raise CriticalException("大使馆网站正在运维", "MAINTENANCE-001")
+                            else:
+                                raise ErrorException("打开用户%s的登录页面时候发生未知错误" % self.user_name, "LOGIN-UNKNOW-999")
+                        else:  # 否则继续尝试打开
+                            continue
+
+                    # Login
+                    ab.login(driver, self.user_name, self.password)
+                    if ab.is_login_success(driver):  # login成功
+                        break
+                    elif i == LOGIN_RETRY_CNT-1:  # 抛出最后一次的错误内容
+                        if ab.is_wrong_password(driver):
+                            raise ErrorException("用户登录名%s或者密码错误" % self.user_name, "LOGIN-WRONG-PWD-001")
+                        elif ab.is_ais_maintenance(driver):
+                            raise CriticalException("大使馆网站正在运维", "MAINTENANCE-001")
+                        else:
+                            raise ErrorException("用户%s登录时候发生未知错误" % self.user_name, "LOGIN-UNKNOW-999")
+
+                # 进行各种login后需要做的check, 最后保存seesion
+                self.__chk_and_save_session__(driver)
+
+                # login状态设置
+                self.__logined__ = True
+
+            logger.debug("IVR %s login成功" % self.ivr)
+
+        except Exception as e:
+            raise e
+        finally:
+            ab.destroy(driver)
+
+    def __logout__(self):
+        """账户logout
+        """
+        try:
+            logger.debug("IVR %s 开始logout" % self.ivr)
+
+            with self.login_out_lock:
+                if self.__logined__:
+                    ah.logout(self.country, self.__session__, self.__user_agent__)
+                    self.__logined__ = False
+
+            logger.debug("IVR %s logout成功" % self.ivr)
+
+        except (WarningException, ErrorException) as e:
+            logger.warning(e)
+        except Exception as e:
+            logger.error(e)
+
+
+    @abstractmethod
+    def __chk_and_save_session__(self, driver: WebDriver):
+        """抽象函数。进行各种login后需要做的check, 最后保存seesion。需要子类来实现
+        """
+        raise NotImplemented
+
+    def activate(self):
+        """激活login状态，避免session timeout
+        """
+        logger.debug("开始激活IVR %s，让它长期保持login状态，session不会timeout" % self.ivr)
+        self.__logout__()
+        self.__login__()
+
+
+class UnpaidAcct(_Acct):
+    """这是未付费AIS账户。只能login，刷日子。不能刷时分，也不能约日子。
+    提供自动激活功能：即使login很长时间，也不用担心session timeout
+    """
+    def __chk_and_save_session__(self, driver: WebDriver):
+        """ 进行各种login后需要做的check, 最后保存seesion
+        :param driver:
+        :return: None
+        """
+        logger.debug("IVR %s 进行各种login后需要做的check, 最后保存seesion" % self.ivr)
+        self.__schedule_id__, self.__session__, self.__user_agent__ = ab.move_from_group_to_pay(driver)
+
+    def get_dates(self, auto_login: bool = False):
+        """ 取得所有城市的最新日期。
+        :parameter auto_login:  如果没有login的话，是否自动login，然后再取得日期。True自动login，False不做自动login
+        :return: 返回一个城市和日期的列表。格式为[['Quebec City', (0, 0, 0)], ['Calgary', (2023, 10, 25)]]
+        :exception: "GET-DATES-TOO-MANY" 这个异常code的话，可以继续使用本账户。 其他异常code的话，就换一个账户
+        """
+
+        # 如果需要自动login，先login
+        if not self.is_logined():
+            if auto_login:
+                self.__login__()
+                # time.sleep(30)
+            else:
+                raise ErrorException("账户还未login，不能取得日期", "Not-Login")
+
+        # 取得日期
+        result, self.__session__ = ah.get_dates(self.country, self.__schedule_id__, self.__session__, self.__user_agent__)
+        logger.debug("IVR %s 取日期结果为%s" % (self.ivr, result))
+
+        return result
+
+class  PrepaidAcct(_Acct):
+    """这是已付费AIS账户。可以login，刷时分，约面试。但是不能刷日期。
+    提供自动激活功能：即使login很长时间，也不用担心session timeout
+    """
+    def __init__(self, country: str, user_name: str, password: str, ivr: str,
+                 visa: str, is_tcn: int, is_doc_rtn: int, ppl_cnt: int):
+        """ 初始化
+        """
+        super(PrepaidAcct, self).__init__(country, user_name, password, ivr)
+        self.visa = visa
+        self.is_tcn = is_tcn
+        self.is_doc_rtn = is_doc_rtn
+        self.ppl_cnt = ppl_cnt
+
+    def __chk_and_save_session__(self, driver: WebDriver):
+        """ 进行各种login后需要做的check, 最后保存seesion
+        """
+        logger.debug("IVR %s 开始login后的检查" % self.ivr)
+
+        # 检查IVR，是否存在
+        grp = ab.get_grp_by_ivr(driver, self.ivr)
+        if grp is None:
+            raise ErrorException("客户%s的IVR %s 在AIS系统里面找不到"
+                                  % (self.user_name, self.ivr), "PARAM-ERR-001")
+
+        # 是否可预约
+        appl_status = ab.get_status(grp)
+        if appl_status != ab.STATUS_SCHEDULE_APPOINTMENT and appl_status != ab.STATUS_ATTEND_APPOINTMENT:
+            raise ErrorException("IVR %s 状态不对。不是可以预约的状态" % self.ivr, "PARAM-ERR-002")
+
+        # 取得已预约的信息
+        if appl_status == ab.STATUS_ATTEND_APPOINTMENT:
+            apted_info = ab.get_apted_info(grp)
+
+        # 人数是否匹配
+        appl_list = ab.get_appl_list_by_grp(grp)
+        if len(appl_list) != self.ppl_cnt:
+            msg = "IVR %s 人数不匹配。客户希望预约%d人，实际有%d人" % (self.ivr, self.ppl_cnt, len(appl_list))
+            raise ErrorException(msg, "PARAM-ERR-003")
+
+        # 对每个申请人，检查
+        for appl in appl_list:
+            # 签证类型是否匹配
+            if appl.get("Visa Class").find(self.visa) != 0:
+                msg = "IVR %s 的签证类型不匹配。客户认为是%s，实际是%s" \
+                      % (self.ivr, self.visa, appl.get("Visa Class"))
+                raise ErrorException(msg, "PARAM-ERR-004")
+
+            # 资料打回是否匹配
+            if appl.get("Document Return") != self.is_doc_rtn:
+                msg = "IVR %s 的资料打回不匹配。客户认为是%s，实际是%s" \
+                      % (self.ivr, self.is_doc_rtn, appl.get("Document Return"))
+                raise ErrorException(msg, "PARAM-ERR-004")
+
+        # 检查每个人的tcn是否正确
+        if not ab.is_tcn_right(driver, self.country, self.ivr, self.is_tcn):
+            msg = f"IVR {self.ivr} 的TCN设置不正确"
+            raise ErrorException(msg, "PARAM-ERR-005")
+
+        # 跳转到action页面
+        grp = ab.get_grp_by_ivr(driver, self.ivr)
+        ab.move_from_group_to_action(grp)
+
+        # check是否可以跳转到Schedule 页面
+        if appl_status == ab.STATUS_ATTEND_APPOINTMENT:  # 只有已预约的人才需要chk
+            if not ab.have_reschedule_bar(driver):
+                msg = "IVR %s 已经过期。action页面上的Reschedule按钮已经消失" % self.ivr
+                raise ErrorException(msg, "SCHEDULE-ERR-001")
+
+        # 从action页面跳转到schedule页面
+        logger.debug("IVR %s 从action页面跳转到schedule页面， 并保存所有的post信息" % self.ivr)
+        self.__schedule_id__, self.__session__, self.__user_agent__ = \
+            ab.move_from_action_to_schedule(driver, self.country, self.ppl_cnt)
+
+        # 保存所有post需要用的信息
+        self.__post_header__, self.__post_data__ = \
+            ab.get_post_base_info(driver, self.country, self.__schedule_id__, self.__user_agent__)
+
+    def get_times(self, city_cd: str, appt_date: str):
+        """取得所有可预约的时间
+        :param city_cd: 某个城市的代码，比如 95， 91等。注意，不是城市名称"Vancouver", "London"
+        :param appt_date: 可预约的日期，格式为"YYYY-MM-DD"。 比如"2022-12-31"
+        :return: None代表request失败。 [None]代表没有可用时间。 ["09:30", "10:30"]代表有两个可用的时间
+        """
+        logger.debug("IVR %s 开始取时分（城市%s, 日期%s）" % (self.ivr, city_cd, appt_date))
+        if self.is_logined():
+            result, self.__session__ = ah.get_times(self.country, city_cd, self.__schedule_id__,
+                                                    appt_date, self.__session__, self.__user_agent__)
+        else:
+            raise WarningException("用户%s可能正在激活，无法处理取时间的请求" % self.ivr, "GET-TIME-WHILE-NOT-LOGIN")
+
+        logger.debug("IVR %s 取时分（城市%s, 日期%s）结果为%s" % (self.ivr, city_cd, appt_date, result))
+        return result
+
+
+    def schedule(self, city_cd, appt_date, appt_time):
+        """预约面试
+        :param city_cd: 某个城市的代码，比如 ca， gb等
+        :param appt_date: 可预约的日期，格式为"YYYY-MM-DD"。 比如"2022-12-31"
+        :param appt_time: 可预约的时分，格式为"HH:MM"。 比如"09:30"
+        """
+        if self.is_logined():
+            result, self.__session__ = ah.schedule(
+                self.country, city_cd, self.__schedule_id__, appt_date,
+                appt_time, self.__session__, self.__post_header__, self.__post_data__)
+            if result == g.SCHEDULE_TOO_SLOW:
+                # 重新获取最新的post信息
+                self.__post_data__, self.__session__ = ah.get_post_data(self.country, self.__schedule_id__, self.__session__, self.__user_agent__)
+                raise WarningException("预约慢了一拍，位置已经被别人抢走了。也可能是其他原因导致没有约上", "SCHEDULE-TOO-SLOW")
+        else:
+            raise ErrorException("用户%s还没有login，不应该收到预约面试的请求。应该是程序有错误" % self.ivr, "SCHEDULE-WHILE-NOT-LOGIN")
+
+        logger.info("IVR %s 成功预约（城市%s, 日期%s, 时分%s）" % (self.ivr, city_cd, appt_date, appt_time))
+

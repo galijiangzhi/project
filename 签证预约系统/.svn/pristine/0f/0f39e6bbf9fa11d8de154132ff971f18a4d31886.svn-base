@@ -1,0 +1,286 @@
+-- --------------------------------------------------------
+-- 主机:                           db
+-- 服务器版本:                        8.0.28 - MySQL Community Server - GPL
+-- 服务器操作系统:                      Win64
+-- HeidiSQL 版本:                  12.1.0.6537
+-- --------------------------------------------------------
+
+/*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
+/*!40101 SET NAMES utf8 */;
+/*!50503 SET NAMES utf8mb4 */;
+/*!40103 SET @OLD_TIME_ZONE=@@TIME_ZONE */;
+/*!40103 SET TIME_ZONE='+00:00' */;
+/*!40014 SET @OLD_FOREIGN_KEY_CHECKS=@@FOREIGN_KEY_CHECKS, FOREIGN_KEY_CHECKS=0 */;
+/*!40101 SET @OLD_SQL_MODE=@@SQL_MODE, SQL_MODE='NO_AUTO_VALUE_ON_ZERO' */;
+/*!40111 SET @OLD_SQL_NOTES=@@SQL_NOTES, SQL_NOTES=0 */;
+
+
+-- 导出 usavisa 的数据库结构
+DROP DATABASE IF EXISTS `usavisa`;
+CREATE DATABASE IF NOT EXISTS `usavisa` /*!40100 DEFAULT CHARACTER SET utf8 */ /*!80016 DEFAULT ENCRYPTION='N' */;
+USE `usavisa`;
+
+-- 导出  表 usavisa.acct 结构
+DROP TABLE IF EXISTS `acct`;
+CREATE TABLE IF NOT EXISTS `acct` (
+  `ivr` varchar(50) CHARACTER SET utf8 COLLATE utf8_general_ci NOT NULL COMMENT 'IVR号码(账号ID)',
+  `username` varchar(50) DEFAULT NULL COMMENT '用户名  说明：登录面试预约网站的用户名',
+  `password` varchar(50) DEFAULT NULL COMMENT '密码  说明：登录面试预约网站的密码',
+  `country` varchar(2) DEFAULT NULL COMMENT '国家',
+  `visa` varchar(10) DEFAULT NULL COMMENT '签证类型',
+  `is_tcn` tinyint DEFAULT '0' COMMENT '是否TCN  说明：0，非tcn  1，tcn',
+  `is_doc_rtn` tinyint DEFAULT '0' COMMENT '是否资料退回  说明：0，未退回  1，退回',
+  `ppl_cnt` int unsigned DEFAULT '1' COMMENT '人数  说明：相同IVR号码下的人数',
+  `paid` tinyint DEFAULT '1' COMMENT '签证费缴纳状态  说明：0 未交费/1 已经缴费',
+  `can_be_time_maker` tinyint DEFAULT '1' COMMENT '是否允许做时分生产员  说明：0 不允许做/1 允许做(即使这个订单已经预约完成)。 这儿是手工设置的，缺省是 允许做',
+  `expired` tinyint DEFAULT '0' COMMENT '是否已经过期  说明：0 未过期/ 1 已过期',
+  `create_timestamp` datetime(6) DEFAULT CURRENT_TIMESTAMP(6),
+  `update_datetime` datetime(6) DEFAULT CURRENT_TIMESTAMP(6),
+  PRIMARY KEY (`ivr`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb3 COMMENT='所有消费者及2种生产员的账号信息';
+
+-- 正在导出表  usavisa.acct 的数据：~0 rows (大约)
+DELETE FROM `acct`;
+INSERT INTO `acct` (`ivr`, `username`, `password`, `country`, `visa`, `is_tcn`, `is_doc_rtn`, `ppl_cnt`, `paid`, `can_be_time_maker`, `expired`, `create_timestamp`, `update_datetime`) VALUES
+	('11111111', 'nopay_001@gmail.com', 'samepassword', 'ca', 'B', 0, 0, 1, 0, 0, 0, '2022-11-01 12:51:46.000000', '2022-11-01 12:51:46.534683'),
+	('11111112', 'nopay_002@gmail.com', 'samepassword', 'ca', 'B', 0, 0, 1, 0, 0, 0, '2022-11-01 12:51:46.000000', '2022-11-01 12:51:46.534683'),
+	('11111113', 'nopay_003@gmail.com', 'samepassword', 'ca', 'B', 0, 0, 1, 0, 0, 0, '2022-11-01 12:51:46.000000', '2022-11-01 12:51:46.534683'),
+	('11909300', '382022408@qq.com', 'Syq093242111', 'gb', 'B', 0, 0, 1, 1, 1, 0, '2022-11-01 12:51:46.000000', '2022-11-01 12:51:46.534683'),
+	('40535188', 'yuejinghui.chen@mail.utoronto.ca', 'CYjh6636aaa', 'ca', 'B', 0, 0, 1, 1, 1, 0, '2022-11-01 12:51:46.000000', '2022-11-01 12:51:46.534683'),
+	('87535580', 'yipengw0113@gmail.com', 'Wyp-0113bbb', 'ca', 'H', 0, 0, 1, 1, 1, 0, '2022-11-01 12:51:46.000000', '2022-11-01 12:51:46.534683');
+
+-- 导出  表 usavisa.acct_type 结构
+DROP TABLE IF EXISTS `acct_type`;
+CREATE TABLE IF NOT EXISTS `acct_type` (
+  `country` varchar(2) CHARACTER SET utf8 COLLATE utf8_general_ci NOT NULL COMMENT '国家',
+  `visa` varchar(10) CHARACTER SET utf8 COLLATE utf8_general_ci NOT NULL COMMENT '签证类型',
+  `is_tcn` tinyint NOT NULL COMMENT '是否TCN  说明：0：非tcn 1：是tcn',
+  `is_doc_rtn` tinyint NOT NULL COMMENT '是否资料退回  说明：0，未退回  1，退回',
+  `ppl_cnt` int unsigned NOT NULL COMMENT '人数  说明：相同IVR号码下的人数',
+  `acct_type_cd` varchar(50) CHARACTER SET utf8 COLLATE utf8_general_ci NOT NULL COMMENT '账号分类Cd',
+  `create_timestamp` datetime DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间  说明：mysql自动设置这个时间',
+  `update_datetime` datetime DEFAULT CURRENT_TIMESTAMP COMMENT '更新时间  说明：mysql自动设置这个时间',
+  PRIMARY KEY (`country`,`visa`,`is_tcn`,`is_doc_rtn`,`ppl_cnt`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb3 COMMENT='即使是不同签证或者不同tcn，有可能是同类型账号，可以共享可预约的日期和时间。\r\n这儿定义了哪些是同类型账号。';
+
+-- 正在导出表  usavisa.acct_type 的数据：~0 rows (大约)
+DELETE FROM `acct_type`;
+INSERT INTO `acct_type` (`country`, `visa`, `is_tcn`, `is_doc_rtn`, `ppl_cnt`, `acct_type_cd`, `create_timestamp`, `update_datetime`) VALUES
+	('ca', 'B', 0, 0, 1, 'ca_B', '2022-11-01 12:48:06', '2022-11-01 12:48:06'),
+	('ca', 'B', 1, 0, 1, 'ca_B_tcn', '2022-11-01 12:48:36', '2022-11-01 12:48:36'),
+	('ca', 'H', 0, 0, 1, 'ca_HL', '2022-11-01 12:48:36', '2022-11-01 12:48:36'),
+	('ca', 'L', 0, 0, 1, 'ca_HL', '2022-11-01 12:48:36', '2022-11-01 12:48:36'),
+	('gb', 'B', 0, 0, 1, 'gb_B', '2022-11-01 12:48:36', '2022-11-01 12:48:36'),
+	('gb', 'B', 1, 0, 1, 'gb_B', '2022-11-01 12:48:36', '2022-11-01 12:48:36');
+
+-- 导出  表 usavisa.appt_history 结构
+DROP TABLE IF EXISTS `appt_history`;
+CREATE TABLE IF NOT EXISTS `appt_history` (
+  `ivr` varchar(50) CHARACTER SET utf8 COLLATE utf8_general_ci NOT NULL COMMENT 'IVR号码  说明：约面试位置的人的IVR',
+  `create_timestamp` datetime(6) NOT NULL COMMENT '本操作时间戳  说明：约面试位置的人做预约操作时候的时间戳',
+  `date_prod_ivr` varchar(50) CHARACTER SET utf8 COLLATE utf8_general_ci NOT NULL COMMENT '爬日期的IVR号码  说明：是谁在什么时候爬到日期了，所以引起了本次预约',
+  `date_prod_city_cd` varchar(50) NOT NULL,
+  `date_prod_create_timestamp` datetime(6) NOT NULL COMMENT '爬日期的系统时间戳',
+  `time_prod_ivr` varchar(50) CHARACTER SET utf8 COLLATE utf8_general_ci NOT NULL COMMENT '爬时分的IVR号码  说明：是谁在什么时候爬到时分了，所以引起了本次预约',
+  `time_prod_create_timestamp` datetime(6) NOT NULL COMMENT '爬时分的系统时间戳',
+  `rslt_sts` tinyint NOT NULL COMMENT '预约结果  说明：1，成功  2，慢了一拍  3，错误',
+  `err_msg` varchar(500) DEFAULT NULL COMMENT '错误信息  说明：如果【预约结果】= 错误的话，这儿记录详细错误信息',
+  PRIMARY KEY (`ivr`,`create_timestamp`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb3 COMMENT='每次尝试预约，不论成功失败，都产生相应的记录。';
+
+-- 正在导出表  usavisa.appt_history 的数据：~0 rows (大约)
+DELETE FROM `appt_history`;
+INSERT INTO `appt_history` (`ivr`, `create_timestamp`, `date_prod_ivr`, `date_prod_city_cd`, `date_prod_create_timestamp`, `time_prod_ivr`, `time_prod_create_timestamp`, `rslt_sts`, `err_msg`) VALUES
+	('11909300', '2022-11-01 13:27:02.000000', '11111111', '80', '2022-11-01 13:27:43.000000', '87535580', '2022-11-01 13:27:44.000000', 1, NULL),
+	('87535580', '2022-11-01 13:29:41.000000', '11111115', '95', '2022-11-01 13:27:43.000000', '87535580', '2022-11-01 13:27:44.000000', 3, 'too many request');
+
+-- 导出  表 usavisa.city 结构
+DROP TABLE IF EXISTS `city`;
+CREATE TABLE IF NOT EXISTS `city` (
+  `country` varchar(2) CHARACTER SET utf8 COLLATE utf8_general_ci NOT NULL COMMENT '国家',
+  `city_name` varchar(50) CHARACTER SET utf8 COLLATE utf8_general_ci NOT NULL COMMENT '城市名称',
+  `city_cd` varchar(50) CHARACTER SET utf8 COLLATE utf8_general_ci NOT NULL COMMENT '城市Cd',
+  `create_timestamp` datetime DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间  说明：mysql自动设置这个时间',
+  `update_datetime` datetime DEFAULT CURRENT_TIMESTAMP COMMENT '更新时间  说明：mysql自动设置这个时间',
+  PRIMARY KEY (`country`,`city_name`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb3 COMMENT='城市代码和名称之间的关系';
+
+-- 正在导出表  usavisa.city 的数据：~0 rows (大约)
+DELETE FROM `city`;
+INSERT INTO `city` (`country`, `city_name`, `city_cd`, `create_timestamp`, `update_datetime`) VALUES
+	('ca', 'Calgary', '93', '2022-11-01 12:45:39', '2022-11-01 12:45:40'),
+	('ca', 'Toronto', '94', '2022-11-01 12:45:39', '2022-11-01 12:45:40'),
+	('ca', 'Vancouver', '95', '2022-11-01 12:45:27', '2022-11-01 12:45:28'),
+	('gb', 'Belfast', '81', '2022-11-01 12:46:47', '2022-11-01 12:46:47'),
+	('gb', 'London', '80', '2022-11-01 12:46:29', '2022-11-01 12:46:29');
+
+-- 导出  表 usavisa.date_maker 结构
+DROP TABLE IF EXISTS `date_maker`;
+CREATE TABLE IF NOT EXISTS `date_maker` (
+  `ivr` varchar(50) CHARACTER SET utf8 COLLATE utf8_general_ci NOT NULL COMMENT 'IVR号码(账号ID)',
+  `last_use` datetime(6) DEFAULT NULL COMMENT '每次login前，实时更新一次. 爬数据前，可以不用实时的更新',
+  PRIMARY KEY (`ivr`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb3 COMMENT='日期生产员都是未交费的账号。全部手工导入';
+
+-- 正在导出表  usavisa.date_maker 的数据：~0 rows (大约)
+DELETE FROM `date_maker`;
+INSERT INTO `date_maker` (`ivr`, `last_use`) VALUES
+	('11111111', '2022-11-02 02:15:06.042342'),
+	('11111112', '2022-11-02 02:15:09.000212'),
+	('11111113', '2022-11-02 02:15:11.234230');
+
+-- 导出  表 usavisa.date_prod_history 结构
+DROP TABLE IF EXISTS `date_prod_history`;
+CREATE TABLE IF NOT EXISTS `date_prod_history` (
+  `ivr` varchar(50) CHARACTER SET utf8 COLLATE utf8_general_ci NOT NULL COMMENT '爬日期的IVR号码',
+  `create_timestamp` datetime(6) NOT NULL COMMENT '本操作时间戳  说明：由程序设置这个时间，而不是mysql设置',
+  `city_cd` varchar(50) CHARACTER SET utf8 COLLATE utf8_general_ci NOT NULL COMMENT '爬取结果-城市Cd . 如果爬取过程中出错了，城市设置为空字符串',
+  `rslt_sts` tinyint NOT NULL COMMENT '爬取结果  说明：1，找到了日期  2，没有找到日期  3，错误',
+  `rslt_date` varchar(10) DEFAULT NULL COMMENT '爬取结果-日期',
+  `err_msg` varchar(500) DEFAULT NULL COMMENT '错误信息  说明：如果【爬取结果】= 错误的话，这儿记录详细错误信息',
+  PRIMARY KEY (`ivr`,`create_timestamp`,`city_cd`) USING BTREE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb3 COMMENT='每次生产员取日期信息，不论成功还是失败，都会产生相应的记录。便于运维时候查看。\r\n可以通过系统配置表决定是否输出失败的信息';
+
+-- 正在导出表  usavisa.date_prod_history 的数据：~0 rows (大约)
+DELETE FROM `date_prod_history`;
+INSERT INTO `date_prod_history` (`ivr`, `create_timestamp`, `city_cd`, `rslt_sts`, `rslt_date`, `err_msg`) VALUES
+	('11111111', '2022-11-01 13:13:38.000000', '95', 1, '2023-03-15', NULL),
+	('11111111', '2022-11-01 13:13:38.000000', '96', 1, '2023-05-08', NULL),
+	('11111111', '2022-11-01 13:13:38.000000', '98', 1, '2022-12-01', NULL),
+	('11111111', '2022-11-01 13:14:09.000000', '', 3, '', '大使馆网站返回 too many request');
+
+-- 导出  表 usavisa.log 结构
+DROP TABLE IF EXISTS `log`;
+CREATE TABLE IF NOT EXISTS `log` (
+  `ID` int unsigned NOT NULL AUTO_INCREMENT COMMENT 'ID  说明：mysql系统自动增长',
+  `level` tinyint DEFAULT NULL COMMENT '日志级别  说明：1，debug：系统稳定后，不输出这种日志  2，info：？  3，error：不需要手工处理的错误  4，fatal：需要手工处理的错误（比如账号类型和实际的不一致，账号密码不正确，无法连接互联网等）',
+  `descript` varchar(500) DEFAULT NULL COMMENT '错误内容',
+  `create_timestamp` datetime(6) DEFAULT CURRENT_TIMESTAMP(6) COMMENT '创建时间  说明：mysql自动设置这个时间',
+  PRIMARY KEY (`ID`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb3 COMMENT='为了便于运维的日志。\r\n\r\n并不是所有日志都输出的到这儿\r\n1，开发阶段的日志，输出到日志文件里\r\n2，开发后到系统稳定前的日志：以debug 日志形式输出到这儿\r\n3，系统稳定后日志：info或者error级别的日志才输出到这儿';
+
+-- 正在导出表  usavisa.log 的数据：~0 rows (大约)
+DELETE FROM `log`;
+
+-- 导出  表 usavisa.order 结构
+DROP TABLE IF EXISTS `order`;
+CREATE TABLE IF NOT EXISTS `order` (
+  `id` int unsigned NOT NULL AUTO_INCREMENT,
+  `ivr` varchar(50) DEFAULT NULL COMMENT 'IVR号码(账号ID)',
+  `self_appt_sts` tinyint DEFAULT '0' COMMENT '自己预约的状态  0，未预约 1，已预约.  说明：客户下单前的预约状态。即客户是否已经自己先约了一个位置 ',
+  `self_appt_city_cd` varchar(50) DEFAULT NULL COMMENT '自己预约的城市cd',
+  `self_appt_date` varchar(10) DEFAULT NULL COMMENT '自己预约的日期  说明：格式为YYYY-MM-DD',
+  `comm` varchar(500) DEFAULT NULL COMMENT '订单说明',
+  `pause` tinyint DEFAULT '0' COMMENT '暂停预约  说明：0：可以开始帮这个订单预约面试日期  1: 暂时不能处理本订单',
+  `pause_reson` varchar(500) DEFAULT NULL COMMENT '暂停原因',
+  `final_sts` tinyint DEFAULT '0' COMMENT '最终预约状态  说明：0，未预约  1，已预约',
+  `final_city_cd` varchar(50) DEFAULT NULL COMMENT '最终预约城市cd',
+  `final_appt_date` varchar(10) DEFAULT NULL COMMENT '最终预约日期  说明：格式为YYYY-MM-DD',
+  `final_appt_time` varchar(5) DEFAULT NULL COMMENT '最终预约时分  说明：格式为HH:MM',
+  `create_timestamp` datetime(6) DEFAULT CURRENT_TIMESTAMP(6),
+  `update_datetime` datetime(6) DEFAULT CURRENT_TIMESTAMP(6),
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb3 COMMENT='订单的基本信息以及订单的完成状态';
+
+-- 正在导出表  usavisa.order 的数据：~0 rows (大约)
+DELETE FROM `order`;
+INSERT INTO `order` (`id`, `ivr`, `self_appt_sts`, `self_appt_city_cd`, `self_appt_date`, `comm`, `pause`, `pause_reson`, `final_sts`, `final_city_cd`, `final_appt_date`, `final_appt_time`, `create_timestamp`, `update_datetime`) VALUES
+	(1, '87535580', 1, '95', '2023-06-11', '客户只要周六日的面试，其他不行', 0, NULL, 0, NULL, NULL, NULL, '2022-11-01 11:36:06.115903', '2022-11-01 11:36:06.115903'),
+	(2, '40535188', 0, '', '', '客户只要今年的面试', 0, NULL, 0, NULL, NULL, NULL, '2022-11-01 11:36:06.115903', '2022-11-01 11:36:06.115903'),
+	(3, '11909300', 0, '', '', '需要约伦敦的面试位置', 0, NULL, 1, '80', '2022-11-30', '11:30', '2022-11-01 11:36:06.115903', '2022-11-01 11:36:06.115903');
+
+-- 导出  表 usavisa.order_period 结构
+DROP TABLE IF EXISTS `order_period`;
+CREATE TABLE IF NOT EXISTS `order_period` (
+  `order_id` int unsigned NOT NULL COMMENT '订单ID',
+  `city_cd` varchar(50) CHARACTER SET utf8 COLLATE utf8_general_ci NOT NULL COMMENT '面试城市Cd',
+  `date_from` varchar(10) CHARACTER SET utf8 COLLATE utf8_general_ci DEFAULT NULL COMMENT '最早可接受的面试日，格式为YYYY-MM-DD',
+  `date_to` varchar(10) CHARACTER SET utf8 COLLATE utf8_general_ci DEFAULT NULL COMMENT '最迟可接受的面试日，格式为YYYY-MM-DD',
+  `excl_dates` varchar(500) CHARACTER SET utf8 COLLATE utf8_general_ci DEFAULT NULL COMMENT '希望排除的日期\r\n说明：客户虽然希望约11/15~11/30的面试，但是11/20~11/22以及11/25不能面试。如下记录：  [2022-11-20, 2022-11-22], [2022-11-25, 2022-11-25]  \r\n如果客户没有需要排除的日期，这儿设置为空    \r\n结构：  [排除日期From, 排除日期To], [排除日期From, 排除日期To]… ',
+  `adv_dates` int unsigned DEFAULT '1' COMMENT '必须提前几天通知  说明：如果这儿设置成10，那么即使明天符合可接受面试日的范畴，也不能预约。因为只能约10天后的面试',
+  `create_timestamp` datetime(6) DEFAULT CURRENT_TIMESTAMP(6) COMMENT '创建时间  说明：mysql自动设置这个时间',
+  `update_datetime` datetime(6) DEFAULT CURRENT_TIMESTAMP(6) COMMENT '更新时间  说明：mysql自动设置这个时间',
+  PRIMARY KEY (`order_id`,`city_cd`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb3 COMMENT='客户希望预约的城市及期间信息。\r\n每个订单都有相应的N条客户期望';
+
+-- 正在导出表  usavisa.order_period 的数据：~0 rows (大约)
+DELETE FROM `order_period`;
+INSERT INTO `order_period` (`order_id`, `city_cd`, `date_from`, `date_to`, `excl_dates`, `adv_dates`, `create_timestamp`, `update_datetime`) VALUES
+	(1, '95', '2022-11-15', '2022-12-31', '[2022-12-12, 2022-12-12],[2022-12-19, 2022-12-20]', 2, '2022-11-01 13:09:03.102312', '2022-11-01 13:09:03.102312'),
+	(1, '96', '2022-11-19', '2022-12-31', '', 5, '2022-11-01 13:09:03.102312', '2022-11-01 13:09:03.102312'),
+	(2, '95', '2022-11-19', '2022-12-31', '', 1, '2022-11-01 13:09:03.102312', '2022-11-01 13:09:03.102312');
+
+-- 导出  表 usavisa.sys_parm 结构
+DROP TABLE IF EXISTS `sys_parm`;
+CREATE TABLE IF NOT EXISTS `sys_parm` (
+  `parm_key` varchar(100) CHARACTER SET utf8 COLLATE utf8_general_ci NOT NULL COMMENT '名称',
+  `parm_value` varchar(500) DEFAULT NULL COMMENT '值',
+  `comm` varchar(500) DEFAULT NULL COMMENT '说明',
+  `create_timestamp` datetime DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间  说明：mysql自动设置这个时间',
+  `update_datetime` datetime DEFAULT CURRENT_TIMESTAMP COMMENT '更新时间  说明：mysql自动设置这个时间',
+  PRIMARY KEY (`parm_key`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb3 COMMENT='所有和账号类型无关的，并且保持不变的信息，都保存在这儿。\r\n比如，多长时间需要重新日志in，大使馆网站多长时间timeout，日期生产员间隔多少秒刷一次';
+
+-- 正在导出表  usavisa.sys_parm 的数据：~0 rows (大约)
+DELETE FROM `sys_parm`;
+INSERT INTO `sys_parm` (`parm_key`, `parm_value`, `comm`, `create_timestamp`, `update_datetime`) VALUES
+	('data_maker.relogin_min', '180', '日期生产员多长时间必须重新登录.单位：分钟', '2022-11-01 12:38:53', '2022-11-01 12:38:53'),
+	('data_maker.relogin_rest_min', '300', '日期生产员再次login前必须休息几分钟  单位：分钟', '2022-11-01 12:38:53', '2022-11-01 12:38:53'),
+	('time_maker.relogin_min', '30', '时间生产员多长时间必须重新登录.单位：分钟', '2022-11-01 12:38:53', '2022-11-01 12:38:53');
+
+-- 导出  表 usavisa.tcn 结构
+DROP TABLE IF EXISTS `tcn`;
+CREATE TABLE IF NOT EXISTS `tcn` (
+  `country` varchar(2) CHARACTER SET utf8 COLLATE utf8_general_ci NOT NULL COMMENT '国家',
+  `type` tinyint NOT NULL COMMENT 'tcn类型  说明：1，申请人编辑页面-travel  2，申请人编辑页面-PR  3，condition页面-PR',
+  `value` varchar(500) DEFAULT NULL COMMENT '判定值',
+  `create_timestamp` datetime DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间  说明：mysql自动设置这个时间',
+  `update_datetime` datetime DEFAULT CURRENT_TIMESTAMP COMMENT '更新时间  说明：mysql自动设置这个时间',
+  PRIMARY KEY (`country`,`type`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb3 COMMENT='消费者或者生产员日志in时候需要先检查一下账号实际设置的tcn是否和数据库里面设置的tcn一致。\r\n这儿定义了判断的方法';
+
+-- 正在导出表  usavisa.tcn 的数据：~0 rows (大约)
+DELETE FROM `tcn`;
+INSERT INTO `tcn` (`country`, `type`, `value`, `create_timestamp`, `update_datetime`) VALUES
+	('ca', 1, 'trevel from outside is true', '2022-11-01 12:44:30', '2022-11-01 12:44:30'),
+	('gb', 2, 'condition tcn is true', '2022-11-01 12:44:30', '2022-11-01 12:44:30');
+
+-- 导出  表 usavisa.time_maker 结构
+DROP TABLE IF EXISTS `time_maker`;
+CREATE TABLE IF NOT EXISTS `time_maker` (
+  `ivr` varchar(50) CHARACTER SET utf8 COLLATE utf8_general_ci NOT NULL COMMENT 'IVR号码(账号ID)',
+  `last_use` datetime(6) DEFAULT NULL COMMENT '每次login前，实时更新一次. 爬数据前，可以不用实时的更新',
+  PRIMARY KEY (`ivr`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb3 COMMENT='所有的时分生产员信息。全部手工导入';
+
+-- 正在导出表  usavisa.time_maker 的数据：~0 rows (大约)
+DELETE FROM `time_maker`;
+INSERT INTO `time_maker` (`ivr`, `last_use`) VALUES
+	('40535188', NULL),
+	('87535580', NULL);
+
+-- 导出  表 usavisa.time_prod_history 结构
+DROP TABLE IF EXISTS `time_prod_history`;
+CREATE TABLE IF NOT EXISTS `time_prod_history` (
+  `ivr` varchar(50) CHARACTER SET utf8 COLLATE utf8_general_ci NOT NULL COMMENT '爬时分的IVR号码',
+  `create_timestamp` datetime(6) NOT NULL COMMENT '本操作时间戳  说明：由程序设置这个时间，而不是mysql设置',
+  `date_prod_ivr` varchar(50) CHARACTER SET utf8 COLLATE utf8_general_ci NOT NULL COMMENT '爬日期的IVR号码  说明：是谁在什么时候爬到日期了，所以引起了本次爬时分',
+  `date_prod_city_cd` varchar(50) CHARACTER SET utf8 COLLATE utf8_general_ci NOT NULL COMMENT '爬日期的IVR号码  说明：是谁在什么时候爬到日期了，所以引起了本次爬时分',
+  `date_prod_create_timestamp` datetime(6) NOT NULL COMMENT '爬日期的系统时间戳',
+  `rslt_sts` tinyint NOT NULL COMMENT '爬取结果  说明：1，找到了时分  2，没有找到时分  3，错误',
+  `rslt_time` varchar(5) DEFAULT NULL COMMENT '爬取结果-时分',
+  `err_msg` varchar(500) DEFAULT NULL COMMENT '错误信息  说明：如果【爬取结果】= 错误的话，这儿记录详细错误信息',
+  PRIMARY KEY (`ivr`,`create_timestamp`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb3 COMMENT='每次生产员取时分信息，不论成功还是失败，都会产生相应的记录。便于运维时候查看。\r\n可以通过系统配置表决定是否输出失败的信息';
+
+-- 正在导出表  usavisa.time_prod_history 的数据：~0 rows (大约)
+DELETE FROM `time_prod_history`;
+INSERT INTO `time_prod_history` (`ivr`, `create_timestamp`, `date_prod_ivr`, `date_prod_city_cd`, `date_prod_create_timestamp`, `rslt_sts`, `rslt_time`, `err_msg`) VALUES
+	('87535580', '2022-11-01 13:13:38.500000', '87535580', '95', '2022-11-01 13:13:38.000000', 1, '11:15', NULL),
+	('87535580', '2022-11-01 13:25:38.000000', '87535580', '95', '2022-11-01 13:13:38.000000', 2, '', '');
+
+/*!40103 SET TIME_ZONE=IFNULL(@OLD_TIME_ZONE, 'system') */;
+/*!40101 SET SQL_MODE=IFNULL(@OLD_SQL_MODE, '') */;
+/*!40014 SET FOREIGN_KEY_CHECKS=IFNULL(@OLD_FOREIGN_KEY_CHECKS, 1) */;
+/*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
+/*!40111 SET SQL_NOTES=IFNULL(@OLD_SQL_NOTES, 1) */;

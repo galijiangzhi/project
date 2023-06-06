@@ -1,0 +1,15 @@
+from apscheduler.schedulers.background import BackgroundScheduler
+
+from util.exception import CriticalException, ErrorException, WarningException
+from util.log import logger
+from util.config import config
+
+import MySQLdb
+from dbutils.pooled_db import PooledDB
+from util import db as mysql
+import ceshi
+
+
+if __name__ == '__main__':
+    a = ceshi.nb()
+    a.nb()

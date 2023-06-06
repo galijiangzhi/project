@@ -1,0 +1,8 @@
+import ais
+
+
+class DateMaker(ais.UnpaidAcct):
+    def xxx(self):
+        print('该函数是为了让类存在，无实际意义')
+
+

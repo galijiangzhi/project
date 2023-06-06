@@ -1,0 +1,100 @@
+'''
+申请人可以接收的城市及日期的数据字典
+'''
+from appl_order import *
+
+
+class ApplicantOrderDic(object):
+    # 所有订单的期间需求都保存在订单字典中
+    #   结构 [{city_cd: [{date:[appl_list]}] }]
+    # 例子
+    # order_dic = {
+    #     "95": {
+    #         "2022-10-10": [user1, user2],
+    #         "2022-10-11": [user3, user2],
+    #         "2022-10-15": [user1, user5]
+    #     },
+    #     "98": {
+    #         "2022-11-10": [user1, user2],
+    #         "2022-10-18": [user3, user2],
+    #         "2022-10-19": [user1, user5]
+    #     },
+    # }
+    order_dic = {}
+
+    def __init__(self):
+        pass
+
+    def __str__(self):
+        return str(self.order_dic)
+
+    def reset(self, appl_list: list):
+        """根据输入的指定申请人列表，重构字典
+        """
+        appl: ApplOrder
+
+        # 加入申请人可接受的城市及相应的日期到数据字典
+        for appl in appl_list:
+            # 申请人已经约好了位置，就不再加入字典了
+            if appl.final_sts == 1:
+                continue
+
+            # 加入字典
+            order_period: ApplOrderPeriod
+            for order_period in appl.order_period_list:
+                self.__appand__(appl, order_period.city_cd, order_period.get_acpt_dates())
+
+
+        # 所有申请人根据可接受面试的总天数排序
+        for city, date_dic in self.order_dic.items():
+            for date, appl_list in date_dic.items():
+                date_dic[date] = sorted(appl_list, key=lambda appl: appl.get_priority())
+
+    def __appand__(self, appl: ApplOrder, appl_city_cd, appl_acpt_date_list):
+        if appl_city_cd in self.order_dic:
+            date_dic = self.order_dic[appl_city_cd]
+        else:
+            date_dic = self.order_dic[appl_city_cd] = dict()
+
+        for appl_acpt_date in appl_acpt_date_list:
+            if appl_acpt_date in date_dic:
+                appl_list = date_dic[appl_acpt_date]
+            else:
+                appl_list = date_dic[appl_acpt_date] = []
+
+            appl_list.append(appl)
+
+    def get_appl_list(self, city_cd: str, appt_date: str):
+        appl_list = None
+
+        if city_cd in self.order_dic:
+            date_dic = self.order_dic[city_cd]
+        else:
+            return None
+
+        if appt_date in date_dic:
+            appl_list = date_dic[appt_date]
+        else:
+            return None
+
+        return appl_list
+
+
+order_dic = ApplicantOrderDic()
+
+
+
+if __name__ == '__main__':
+    appl_list: list = [ApplOrder("2"), ApplOrder("1")]
+
+    # 申请人的管理员00:02:00开始，每5分钟必须调用一次
+    #   调用前，需要整理申请人列表。申请人列表应该包含所有待预约的人。不论是新加进来的，还是预约期间被变更的
+    # 其他任何时候都不要reset订单字典，避免多线程数据冲突
+    order_dic.reset(appl_list)
+    logger.debug(order_dic)
+
+    # 某个日期生产员找到某个日期后，需要在数据字典里面查找是否有人需要这个位置
+    need_appl_list = order_dic.get_appl_list(city_cd="95", appt_date="2022-11-15")
+    logger.debug(order_dic)
+
+

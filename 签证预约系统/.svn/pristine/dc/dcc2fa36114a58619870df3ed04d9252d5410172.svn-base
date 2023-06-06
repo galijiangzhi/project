@@ -1,0 +1,149 @@
+import time
+from datetime import datetime
+from apscheduler.schedulers.background import BackgroundScheduler
+
+import ais
+from ais import AisBizException
+
+
+def start_multi_unpaid_acct():
+    # 创建多个未付费账户
+    acct_list = [
+        ais.UnpaidAcct("ca", "acomasvu25@hotmail.com", "ggxvisa!"),
+        ais.UnpaidAcct("ca", "adellewlol38@hotmail.com", "ggxvisa!"),
+        ais.UnpaidAcct("ca", "aleshakarcz2nbv@hotmail.com", "ggxvisa!"),
+        ais.UnpaidAcct("ca", "alexar0roen@hotmail.com", "ggxvisa!"),
+        ais.UnpaidAcct("ca", "alfholesxp@hotmail.com", "Usavisa!"),
+        ais.UnpaidAcct("ca", "anderamx1qt@hotmail.com", "Usavisa!"),
+        ais.UnpaidAcct("ca", "anglawoxod@hotmail.com", "ggxvisa!"),
+        ais.UnpaidAcct("ca", "anima21wslowe@hotmail.com", "Usavisa!"),
+        ais.UnpaidAcct("ca", "antfk1duce@hotmail.com", "ggxvisa!"),
+        ais.UnpaidAcct("ca", "aricruse22@hotmail.com", "Usavisa!"),
+        ais.UnpaidAcct("ca", "austinva2k@hotmail.com", "Usavisa!"),
+        ais.UnpaidAcct("ca", "averytqs@hotmail.com", "Usavisa!"),
+        ais.UnpaidAcct("ca", "avilatbgm@hotmail.com", "ggxvisa!"),
+        ais.UnpaidAcct("ca", "beatagabmljz@hotmail.com", "Usavisa!"),
+        ais.UnpaidAcct("ca", "benjlsxxhaaby@hotmail.com", "ggxvisa!"),
+        ais.UnpaidAcct("ca", "bentleykix0m@hotmail.com", "Usavisa!"),
+        ais.UnpaidAcct("ca", "biffmarionpc39@hotmail.com", "Usavisa!"),
+        ais.UnpaidAcct("ca", "billyecaep@hotmail.com", "Usavisa!"),
+        ais.UnpaidAcct("ca", "bl62faraj@hotmail.com", "Usavisa!"),
+        ais.UnpaidAcct("ca", "brandaj7beckey@hotmail.com", "ggxvisa!"),
+        ais.UnpaidAcct("ca", "brianafpn@hotmail.com", "Usavisa!"),
+        ais.UnpaidAcct("ca", "brooksx7tredo@hotmail.com", "Usavisa!"),
+        ais.UnpaidAcct("ca", "bryony4sde@hotmail.com", "Usavisa!"),
+        ais.UnpaidAcct("ca", "c46enciso@hotmail.com", "Usavisa!"),
+        ais.UnpaidAcct("ca", "caelie86ra@hotmail.com", "Usavisa!"),
+        ais.UnpaidAcct("ca", "calleighsvme@hotmail.com", "ggxvisa!"),
+        ais.UnpaidAcct("ca", "candisgvbrm@hotmail.com", "Usavisa!"),
+        ais.UnpaidAcct("ca", "catgarney62m@hotmail.com", "ggxvisa!"),
+        ais.UnpaidAcct("ca", "cathypex@hotmail.com", "Usavisa!"),
+        ais.UnpaidAcct("ca", "ceislerzmqh@hotmail.com", "Usavisa!"),
+        ais.UnpaidAcct("ca", "celinad8wr@hotmail.com", "Usavisa!"),
+        ais.UnpaidAcct("ca", "chaddehaasq8e6@hotmail.com", "Usavisa!"),
+        ais.UnpaidAcct("ca", "chagrederlqm3@hotmail.com", "Usavisa!"),
+        ais.UnpaidAcct("ca", "charleydinmox0@hotmail.com", "Usavisa!"),
+        ais.UnpaidAcct("ca", "chelsieu5gda@hotmail.com", "ggxvisa!"),
+        ais.UnpaidAcct("ca", "cherinzasz@hotmail.com", "ggxvisa!"),
+        ais.UnpaidAcct("ca", "cherylrowe8w7@hotmail.com", "Usavisa!"),
+        ais.UnpaidAcct("ca", "cherystyler6zuh@hotmail.com", "ggxvisa!"),
+        ais.UnpaidAcct("ca", "chhayse43@hotmail.com", "ggxvisa!"),
+        ais.UnpaidAcct("ca", "chtozkoenig@hotmail.com", "ggxvisa!"),
+        ais.UnpaidAcct("ca", "ciras4gdir@hotmail.com", "ggxvisa!"),
+        ais.UnpaidAcct("ca", "claudettebar9lag@hotmail.com", "Usavisa!"),
+        ais.UnpaidAcct("ca", "clematismisdd@hotmail.com", "Usavisa!"),
+        ais.UnpaidAcct("ca", "clemfarugtt2s@hotmail.com", "ggxvisa!"),
+        ais.UnpaidAcct("ca", "clorakf4mi@hotmail.com", "Usavisa!"),
+        ais.UnpaidAcct("ca", "col6zlafler@hotmail.com", "Usavisa!"),
+        ais.UnpaidAcct("ca", "connellt1l@hotmail.com", "Usavisa!"),
+        ais.UnpaidAcct("ca", "cordelian2mi@hotmail.com", "Usavisa!"),
+        ais.UnpaidAcct("ca", "cordiekvatmirsch@hotmail.com", "Usavisa!"),
+        ais.UnpaidAcct("ca", "cristykatschmgvd@hotmail.com", "Usavisa!"),
+        ais.UnpaidAcct("ca", "cwilsonwkh@hotmail.com", "ggxvisa!"),
+        ais.UnpaidAcct("ca", "cxkbyrne@hotmail.com", "Usavisa!"),
+        ais.UnpaidAcct("ca", "dalilakedwb@hotmail.com", "Usavisa!"),
+        ais.UnpaidAcct("ca", "danmynearjqwt@hotmail.com", "Usavisa!"),
+        ais.UnpaidAcct("ca", "dawsonmurin6fk@hotmail.com", "Usavisa!"),
+        ais.UnpaidAcct("ca", "delight1bhpie@hotmail.com", "Usavisa!"),
+        ais.UnpaidAcct("ca", "delphineha0x@hotmail.com", "Usavisa!"),
+        ais.UnpaidAcct("ca", "dene9fbl@hotmail.com", "Usavisa!"),
+        ais.UnpaidAcct("ca", "denesewi7f2@hotmail.com", "ggxvisa!"),
+        ais.UnpaidAcct("ca", "derekcfhi@hotmail.com", "Usavisa!")
+    ]
+
+    # 为所有账户login并创建线程
+    sche = BackgroundScheduler(job_defaults={'max_instances': 100, 'misfire_grace_time': 5 * 60})
+    sec = 0
+    for acct in acct_list:
+        # 以2分钟为节点，从0秒开始，每隔1秒，启动一个线程取日期(取日期同时会自动login)
+        sche.add_job(acct.get_dates,  'interval', seconds=5*60,
+                          start_date='2022-01-01 00:02:%02d' % sec,
+                          end_date='2023-10-25 23:10:00', args=[True,])
+        sec = sec + 1
+
+    # 启动线程
+    print("线程启动")
+    sche.start()
+
+    print("启动完成")
+
+
+def start_unpaid_acct():
+    """ 未付费账户功能测试
+    """
+    acct = ais.UnpaidAcct("ca", "alexar0roen@hotmail.com", "ggxvisa!")
+    print("开始login%s" % datetime.now())
+    acct.login()  # 大概花费12秒
+    print("已经login%s" % datetime.now())
+
+    print("开始取得日期%s" % datetime.now())
+    dates = acct.get_dates(auto_login=False)  # 大概花费1秒
+    print("已经取得日期%s" % datetime.now())
+
+def start_prepaid_acct():
+    """ 付费账户功能测试
+    """
+    acct = ais.PrepaidAcct("ca", "2273383946@qq.com", "liusihan12345", "92740922", "B1", 0, 0, 1)
+
+    print("开始login%s" % datetime.now())
+    acct.login()  # 约14秒
+    print("已经login%s" % datetime.now())
+
+    print("开始取得时分%s" % datetime.now())
+    times = acct.get_times("94", "2024-02-01")  # 约0.4秒
+    print("已经取得时分%s" % datetime.now())
+
+    try:
+        print("开始预约%s" % datetime.now())
+        acct.schedule("94", "2022-11-26", "15:15")
+        print("已经预约%s" % datetime.now())
+    except AisBizException as e:
+        pass
+
+    try:
+        print("开始预约%s" % datetime.now())
+        acct.schedule("94", "2022-11-26", "15:15")
+        print("已经预约%s" % datetime.now())
+    except AisBizException as e:
+        pass
+
+
+    try:
+        print("开始预约%s" % datetime.now())
+        acct.schedule("94", "2022-11-26", "15:15")
+        print("已经预约%s" % datetime.now())
+    except AisBizException as e:
+        pass
+
+if __name__ == '__main__':
+
+    # 未付费账户测试
+    # start_unpaid_acct()
+
+    # 未付费账户测试(多线程)
+    # start_multi_unpaid_acct()
+
+    # 付费账户测试
+    start_prepaid_acct()
+
+    print("over")
